@@ -1,0 +1,44 @@
+source "https://rubygems.org"
+
+ruby "3.3.5"
+
+# Core
+gem "rails", "~> 8.0.0"
+gem "pg", "~> 1.5"
+gem "puma", ">= 5.0"
+gem "bootsnap", require: false
+
+# Built-in solid trifecta (Rails 8) — Postgres-backed
+gem "solid_cache"
+gem "solid_queue"
+gem "solid_cable"
+
+# Auth — Rails 8 has a generator, but we need bcrypt
+gem "bcrypt", "~> 3.1.7"
+
+# CORS for cross-origin requests from frontend
+gem "rack-cors"
+
+# HTTP client for WaniKani API
+gem "faraday", "~> 2.9"
+gem "faraday-retry", "~> 2.2"
+
+group :development, :test do
+  gem "debug", platforms: %i[mri windows]
+  gem "brakeman", require: false
+  gem "rubocop-rails-omakase", require: false
+end
+
+group :development do
+  gem "web-console"
+  gem "mission_control-jobs"
+  gem "propshaft"
+end
+
+group :test do
+  gem "capybara"
+  gem "selenium-webdriver"
+end
+
+# Production
+gem "kamal", require: false

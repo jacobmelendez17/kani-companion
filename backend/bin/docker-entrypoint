@@ -1,0 +1,8 @@
+#!/bin/bash -e
+
+# Run migrations on startup if the role is "release" / migrate
+if [ "${1}" = "./bin/rails" ] && [ "${2}" = "server" ]; then
+  ./bin/rails db:prepare
+fi
+
+exec "${@}"

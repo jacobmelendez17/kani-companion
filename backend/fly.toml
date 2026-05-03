@@ -1,0 +1,39 @@
+# fly.toml — KaniCompanion backend
+# Update `app = "kani-companion-api"` to whatever name you choose during `fly launch`
+
+app = "kani-companion-api"
+primary_region = "iad"  # change to your nearest region
+
+[build]
+
+[deploy]
+  release_command = "./bin/rails db:prepare"
+
+[env]
+  RAILS_ENV = "production"
+  RAILS_LOG_TO_STDOUT = "true"
+  RAILS_SERVE_STATIC_FILES = "true"
+  PORT = "3000"
+  # SOLID_QUEUE_IN_PUMA runs the worker in the same process as the web server.
+  # Cheaper for free tier; for higher load split into a [processes] block instead.
+  SOLID_QUEUE_IN_PUMA = "true"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/up"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

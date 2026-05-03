@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+vendor/bundle/
+
+# Build outputs
+dist/
+build/
+*.log
+tmp/
+storage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Rails
+backend/log/*
+backend/tmp/*
+backend/storage/*
+backend/db/*.sqlite3
+backend/.byebug_history
+backend/master.key
+backend/credentials/*.key
+
+# Frontend
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# Fly
+fly.toml.bak

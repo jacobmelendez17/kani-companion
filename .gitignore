@@ -37,3 +37,7 @@ frontend/coverage/
 
 # Fly
 fly.toml.bak
+
+# Rails encryption keys — NEVER commit these
+backend/config/master.key
+backend/config/credentials/*.key

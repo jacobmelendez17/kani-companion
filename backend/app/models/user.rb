@@ -3,6 +3,8 @@ class User < ApplicationRecord
 
   has_one :wanikani_profile, dependent: :destroy
   has_many :sessions, dependent: :destroy
+  has_many :assignments, dependent: :destroy
+  has_many :study_materials, dependent: :destroy
   has_many :practice_sessions, dependent: :destroy
   has_many :practice_settings, dependent: :destroy
   has_many :local_srs_states, dependent: :destroy

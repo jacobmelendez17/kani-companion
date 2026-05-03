@@ -2,24 +2,21 @@ Rails.application.routes.draw do
   # Health check for Fly.io
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Solid Queue dashboard (dev only — protect this in prod!)
-  if Rails.env.development?
-    mount MissionControl::Jobs::Engine, at: "/jobs"
-  end
-
   namespace :api do
     namespace :v1 do
       # Auth
       post   "auth/signup", to: "auth#signup"
       post   "auth/login",  to: "auth#login"
       delete "auth/logout", to: "auth#logout"
+      get    "auth/username_available", to: "auth#username_available"
+      get    "auth/email_available",    to: "auth#email_available"
 
       # WaniKani profile
       resource :wanikani_profile, only: %i[show create destroy] do
         post :resync
       end
 
-      # Practice — to be expanded
+      # Practice
       resources :practice_sessions, only: %i[index create show] do
         post :answer, on: :member
         post :complete, on: :member

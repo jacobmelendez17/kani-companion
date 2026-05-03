@@ -15,15 +15,13 @@ module Api
       end
 
       def current_user
-        @current_user ||= begin
-          token = request.headers["Authorization"]&.sub(/^Bearer /, "")
-          next nil if token.blank?
+        return @current_user if defined?(@current_user)
 
-          session = Session.find_by(token: token)
-          next nil unless session
+        token = request.headers["Authorization"]&.sub(/^Bearer /, "")
+        return @current_user = nil if token.blank?
 
-          session.user
-        end
+        session = Session.find_by(token: token)
+        @current_user = session&.user
       end
 
       def not_found(error)

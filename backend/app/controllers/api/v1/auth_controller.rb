@@ -27,6 +27,30 @@ module Api
         head :no_content
       end
 
+      def username_available
+        username = params[:username].to_s.strip
+        return render json: { available: false, reason: "blank" } if username.empty?
+
+        unless username.match?(/\A[a-zA-Z0-9_]{3,30}\z/)
+          return render json: { available: false, reason: "invalid" }
+        end
+
+        taken = User.where("LOWER(username) = ?", username.downcase).exists?
+        render json: { available: !taken }
+      end
+
+      def email_available
+        email = params[:email].to_s.strip.downcase
+        return render json: { available: false, reason: "blank" } if email.empty?
+
+        unless email.match?(URI::MailTo::EMAIL_REGEXP)
+          return render json: { available: false, reason: "invalid" }
+        end
+
+        taken = User.where("LOWER(email) = ?", email).exists?
+        render json: { available: !taken }
+      end
+
       private
 
       def signup_params

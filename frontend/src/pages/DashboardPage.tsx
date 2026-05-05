@@ -38,7 +38,6 @@ export default function DashboardPage() {
   // Auto-refresh while syncing — poll every 5s
   useEffect(() => {
     if (data?.sync_status !== 'syncing' && data?.sync_status !== 'pending') return
-
     const interval = setInterval(fetchDashboard, 5000)
     return () => clearInterval(interval)
   }, [data?.sync_status, fetchDashboard])
@@ -48,7 +47,6 @@ export default function DashboardPage() {
     navigate('/login', { replace: true })
   }
 
-  // Compute SRS distribution as percentages of max for the bar charts
   const srsBars = data
     ? (() => {
         const d = data.srs_distribution
@@ -61,7 +59,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-cream relative">
-      {/* Bg grid */}
       <div
         className="absolute inset-0 opacity-[0.04] pointer-events-none"
         style={{
@@ -71,7 +68,6 @@ export default function DashboardPage() {
         }}
       />
 
-      {/* Top nav */}
       <header className="relative z-10 px-5 sm:px-8 py-4 flex justify-between items-center border-b-[3px] border-ink bg-cream">
         <Link to="/" className="flex items-center gap-2.5 no-underline text-ink">
           <div className="grid place-items-center w-9 h-9 bg-pink-hot border-[2.5px] border-ink rounded-lg font-body font-black text-cream text-xl shadow-hard-sm -rotate-[4deg]">
@@ -99,9 +95,8 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Content */}
       <main className="relative z-10 max-w-[1400px] mx-auto px-5 sm:px-8 py-8">
-        {/* Greeting */}
+        {/* Greeting + dual CTA buttons */}
         <div className="flex justify-between items-end flex-wrap gap-4 mb-8">
           <div>
             <span className="inline-block font-mono text-[0.7rem] uppercase tracking-[0.15em] text-pink-hot font-bold mb-3 px-2.5 py-1 bg-cream border-2 border-pink-hot rounded-md">
@@ -118,18 +113,26 @@ export default function DashboardPage() {
               </span>
               .
             </h1>
-            <p className="text-base opacity-70 mt-1.5">Ready to drill?</p>
+            <p className="text-base opacity-70 mt-1.5">Pick your practice mode.</p>
           </div>
-          <Link
-            to="/practice/setup"
-            className="px-5 py-2.5 bg-ink text-cream border-[2.5px] border-ink rounded-[10px] font-display text-[0.85rem] no-underline transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5"
-            style={{ boxShadow: '4px 4px 0 #ff3d8a' }}
-          >
-            Start drilling →
-          </Link>
+          <div className="flex gap-2.5 flex-wrap">
+            <Link
+              to="/practice/setup"
+              className="px-5 py-2.5 bg-ink text-cream border-[2.5px] border-ink rounded-[10px] font-display text-[0.85rem] no-underline transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5"
+              style={{ boxShadow: '4px 4px 0 #ff3d8a' }}
+            >
+              Drill items →
+            </Link>
+            <Link
+              to="/practice/sentence/setup"
+              className="px-5 py-2.5 bg-mint text-ink border-[2.5px] border-ink rounded-[10px] font-display text-[0.85rem] no-underline transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5"
+              style={{ boxShadow: '4px 4px 0 #8b3dff' }}
+            >
+              Translate sentences →
+            </Link>
+          </div>
         </div>
 
-        {/* Sync error banner */}
         {data?.sync_status === 'failed' && (
           <div className="bg-pink-soft border-2 border-pink-hot rounded-[10px] px-4 py-3 mb-5 font-mono text-[0.8rem] flex justify-between items-center shadow-hard-sm">
             <span>⚠ Last sync failed: {data.last_sync_error || 'Unknown error'}</span>

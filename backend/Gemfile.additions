@@ -1,0 +1,19 @@
+# Add these lines to your existing backend/Gemfile, then run `bundle install`:
+#
+# gem "mecab", "~> 0.996" # MeCab Ruby bindings for Japanese tokenization
+#
+# Before running `bundle install`, install MeCab natively:
+#
+#   macOS (Homebrew):
+#     brew install mecab mecab-ipadic
+#
+#   Linux (Debian/Ubuntu):
+#     sudo apt-get install mecab libmecab-dev mecab-ipadic-utf8
+#
+# If you hit linker errors during gem install on Apple Silicon, you may need:
+#   bundle config build.mecab --with-mecab-config=$(brew --prefix mecab)/bin/mecab-config
+#
+# After install:
+#   bundle install
+#   bundle exec rails phrases:import_wanikani
+#   bundle exec rails phrases:import_tatoeba

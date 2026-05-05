@@ -42,3 +42,6 @@ end
 
 # Production
 gem "kamal", require: false
+
+# Japanese tokenization for sentence practice
+gem "mecab", "~> 0.996"

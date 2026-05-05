@@ -16,7 +16,10 @@
     "react-router-dom": "^6.26.2",
     "motion": "^11.11.0",
     "axios": "^1.7.7",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.0",
+    "wanakana": "^5.3.1",
+    "kuroshiro": "^1.2.0",
+    "kuroshiro-analyzer-kuromoji": "^1.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.11",

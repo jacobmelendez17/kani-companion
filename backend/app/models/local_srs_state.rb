@@ -15,38 +15,49 @@ class LocalSrsState < ApplicationRecord
   }, prefix: true
 
   enum :practice_kind, {
-    item:     "item",     # kanji/vocab/radical practice
-    sentence: "sentence"  # sentence practice
+    item:     "item",
+    sentence: "sentence"
   }, prefix: true
 
   validates :user_id, uniqueness: { scope: %i[subject_id practice_kind] }
 
-  # SRS interval table (in hours) — tweakable via config
   INTERVALS = {
-    1 => 4,           # Apprentice 1
-    2 => 8,           # Apprentice 2
-    3 => 24,          # Apprentice 3
-    4 => 48,          # Apprentice 4
-    5 => 24 * 7,      # Guru 1
-    6 => 24 * 14,     # Guru 2
-    7 => 24 * 30,     # Master
-    8 => 24 * 120,    # Enlightened
-    9 => nil          # Burned (retired)
+    1 => 4,
+    2 => 8,
+    3 => 24,
+    4 => 48,
+    5 => 24 * 7,
+    6 => 24 * 14,
+    7 => 24 * 30,
+    8 => 24 * 120,
+    9 => nil
   }.freeze
 
   def next_review_in
     INTERVALS[stage_before_type_cast]
   end
 
+  # Promote on correct answer, increment streak
   def promote!
     return if stage_burned?
 
     new_stage = [stage_before_type_cast + 1, 9].min
-    update!(stage: new_stage, last_reviewed_at: Time.current)
+    update!(
+      stage:            new_stage,
+      current_streak:   current_streak + 1,
+      last_reviewed_at: Time.current,
+      next_review_at:   INTERVALS[new_stage] ? Time.current + INTERVALS[new_stage].hours : nil
+    )
   end
 
+  # Demote on wrong answer, reset streak
   def demote!
     new_stage = [stage_before_type_cast - 2, 1].max
-    update!(stage: new_stage, last_reviewed_at: Time.current)
+    update!(
+      stage:            new_stage,
+      current_streak:   0,
+      last_reviewed_at: Time.current,
+      next_review_at:   INTERVALS[new_stage] ? Time.current + INTERVALS[new_stage].hours : nil
+    )
   end
 end

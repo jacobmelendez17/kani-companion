@@ -1,32 +1,45 @@
 class Subject < ApplicationRecord
-  # Synced from WaniKani — represents radicals, kanji, vocabulary
   has_many :assignments, dependent: :destroy
   has_many :study_materials, dependent: :destroy
-  has_many :context_sentences, dependent: :destroy
+  has_many :local_srs_states, dependent: :destroy
+  has_many :phrase_subjects, dependent: :destroy
+  has_many :phrases, through: :phrase_subjects
 
   enum :subject_type, {
     radical:    "radical",
     kanji:      "kanji",
     vocabulary: "vocabulary"
-  }, prefix: true
+  }, prefix: true, validate: true
 
-  validates :wanikani_id, presence: true, uniqueness: true
-  validates :level, presence: true, numericality: { in: 1..60 }
-  validates :subject_type, presence: true
-
-  scope :by_levels, ->(levels) { where(level: levels) }
-  scope :of_types, ->(types) { where(subject_type: types) }
-
-  # Stored as JSONB:
-  # - meanings: [{ meaning, primary, accepted }]
-  # - readings: [{ reading, primary, accepted, type }]  (kanji/vocab only)
-  # - parts_of_speech, characters, etc.
+  scope :guru_plus_for, ->(user) {
+    joins(:assignments)
+      .where(assignments: { user_id: user.id })
+      .where("assignments.srs_stage >= ? OR assignments.passed_at IS NOT NULL", 5)
+  }
 
   def primary_meaning
-    meanings&.find { |m| m["primary"] }&.dig("meaning")
+    return nil unless meanings.is_a?(Array)
+
+    primary = meanings.find { |m| m["primary"] }
+    primary&.dig("meaning") || meanings.first&.dig("meaning")
   end
 
   def primary_reading
-    readings&.find { |r| r["primary"] }&.dig("reading")
+    return nil unless readings.is_a?(Array)
+
+    primary = readings.find { |r| r["primary"] }
+    primary&.dig("reading") || readings.first&.dig("reading")
+  end
+
+  def all_meanings
+    return [] unless meanings.is_a?(Array)
+
+    meanings.select { |m| m["accepted_answer"] }.map { |m| m["meaning"] }
+  end
+
+  def all_readings
+    return [] unless readings.is_a?(Array)
+
+    readings.select { |r| r["accepted_answer"] }.map { |r| r["reading"] }
   end
 end

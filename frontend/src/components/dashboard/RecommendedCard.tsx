@@ -8,8 +8,11 @@ interface Props {
 export default function RecommendedCard({ data }: Props) {
   const rec = data.recommended_session
 
-  // Pre-fill practice setup based on recommendation mode
-  const href = `/practice/setup?preset=${rec.mode}`
+  // Route to sentence or item setup based on mode
+  const href =
+    rec.mode === 'sentence'
+      ? '/practice/sentence/setup'
+      : `/practice/setup?preset=${rec.mode}`
 
   return (
     <div className="lg:col-span-6 bg-ink text-cream border-[3px] border-ink rounded-[18px] p-6 shadow-hard-md">

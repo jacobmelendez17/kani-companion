@@ -162,6 +162,7 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
+    mecab (0.996)
     mini_mime (1.1.5)
     minitest (6.0.6)
       drb (~> 2.0)
@@ -399,6 +400,7 @@ DEPENDENCIES
   faraday (~> 2.9)
   faraday-retry (~> 2.2)
   kamal
+  mecab (~> 0.996)
   mission_control-jobs
   pg (~> 1.5)
   propshaft

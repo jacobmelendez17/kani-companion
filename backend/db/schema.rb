@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_01_000010) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_05_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -51,6 +51,35 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_01_000010) do
     t.index ["user_id", "stage"], name: "index_local_srs_states_on_user_id_and_stage"
     t.index ["user_id", "subject_id", "practice_kind"], name: "index_local_srs_unique", unique: true
     t.index ["user_id"], name: "index_local_srs_states_on_user_id"
+  end
+
+  create_table "phrase_subjects", force: :cascade do |t|
+    t.bigint "phrase_id", null: false
+    t.bigint "subject_id", null: false
+    t.boolean "is_primary", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["phrase_id", "subject_id"], name: "index_phrase_subjects_on_phrase_id_and_subject_id", unique: true
+    t.index ["phrase_id"], name: "index_phrase_subjects_on_phrase_id"
+    t.index ["subject_id", "is_primary"], name: "index_phrase_subjects_on_subject_id_and_is_primary"
+    t.index ["subject_id"], name: "index_phrase_subjects_on_subject_id"
+  end
+
+  create_table "phrases", force: :cascade do |t|
+    t.text "japanese", null: false
+    t.text "english", null: false
+    t.string "source", null: false
+    t.string "source_id"
+    t.integer "length", null: false
+    t.integer "length_bucket", null: false
+    t.integer "jlpt_level"
+    t.boolean "has_furigana", default: false
+    t.text "furigana_data"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["length_bucket"], name: "index_phrases_on_length_bucket"
+    t.index ["source", "source_id"], name: "index_phrases_on_source_and_source_id", unique: true
+    t.index ["source"], name: "index_phrases_on_source"
   end
 
   create_table "practice_answers", force: :cascade do |t|
@@ -101,6 +130,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_01_000010) do
     t.string "review_order", default: "random"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "breakdown_panel_mode", default: "on_incorrect"
+    t.boolean "furigana_default_visible", default: true
+    t.string "sentence_default_scope", default: "current_level"
+    t.string "sentence_default_stage_filter", default: "all"
+    t.string "sentence_default_mix", default: "mix"
     t.index ["user_id"], name: "index_practice_settings_on_user_id", unique: true
   end
 
@@ -177,6 +211,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_01_000010) do
   add_foreign_key "assignments", "users"
   add_foreign_key "local_srs_states", "subjects"
   add_foreign_key "local_srs_states", "users"
+  add_foreign_key "phrase_subjects", "phrases"
+  add_foreign_key "phrase_subjects", "subjects"
   add_foreign_key "practice_answers", "practice_sessions"
   add_foreign_key "practice_answers", "subjects"
   add_foreign_key "practice_sessions", "users"

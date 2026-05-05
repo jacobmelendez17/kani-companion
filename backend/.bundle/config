@@ -1,0 +1,2 @@
+---
+BUNDLE_BUILD__MECAB: "--with-cppflags=-I/opt/homebrew/include --with-ldflags=-L/opt/homebrew/lib"

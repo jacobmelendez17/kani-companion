@@ -4,6 +4,7 @@ module Practice
   #   2. Filtering by stage (apprentice / guru+ / all)
   #   3. Mixing new (untouched) vs. review (in local SRS) items
   #   4. For each subject, picking an appropriate phrase based on its current stage
+  #   5. Annotating each phrase with token data (surface + reading + WK subject info)
   #
   # Returns: array of question hashes ready to feed the practice flow.
   class SentenceSessionBuilder
@@ -12,11 +13,25 @@ module Practice
     APPRENTICE_STAGES = (1..4).to_a.freeze
     GURU_PLUS_STAGES  = (5..9).to_a.freeze
 
+    # Length brackets in characters — stricter than before per user feedback.
+    # Apprentice gets the absolute simplest content available.
+    STAGE_LENGTH_BRACKETS = {
+      1 => [0, 8],   # Apprentice 1: tiny phrases
+      2 => [0, 12],  # Apprentice 2: very short
+      3 => [0, 18],  # Apprentice 3: short
+      4 => [0, 25],  # Apprentice 4: short-medium
+      5 => [10, 35], # Guru 1: medium
+      6 => [12, 45], # Guru 2: medium
+      7 => [15, 60], # Master: medium-long
+      8 => [20, 80], # Enlightened: long
+      9 => [20, 80]  # Burned: long
+    }.freeze
+
     def initialize(user:, scope:, stage_filter:, mix_mode:, count:)
       @user         = user
-      @scope        = scope         # { type: "level" | "subject_ids" | "all_eligible", levels: [], subject_ids: [] }
-      @stage_filter = stage_filter  # "all" | "apprentice_only" | "guru_plus" | { stages: [1,2,3] }
-      @mix_mode     = mix_mode      # "new_only" | "review_only" | "mix"
+      @scope        = scope
+      @stage_filter = stage_filter
+      @mix_mode     = mix_mode
       @count        = count
     end
 
@@ -24,30 +39,24 @@ module Practice
       candidate_subjects = resolve_scope
       return [] if candidate_subjects.empty?
 
-      # Bucket subjects by whether they're "new" (no local SRS yet) or "review" (have one)
-      existing_srs = LocalSrsState.where(user: user, subject_id: candidate_subjects.map(&:id), practice_kind: "sentence")
-                                  .index_by(&:subject_id)
+      existing_srs = LocalSrsState.where(
+        user:          user,
+        subject_id:    candidate_subjects.map(&:id),
+        practice_kind: "sentence"
+      ).index_by(&:subject_id)
 
       new_subjects    = candidate_subjects.reject { |s| existing_srs[s.id] }
       review_subjects = candidate_subjects.select { |s| existing_srs[s.id] }
-
-      # Apply stage filter (only affects review subjects since new ones have no stage)
       review_subjects = filter_by_stage(review_subjects, existing_srs)
 
-      # Pick subjects according to mix_mode
       picked_subjects = pick_subjects(new_subjects, review_subjects)
-
-      # For each picked subject, pick a phrase appropriate to its stage
       build_questions(picked_subjects, existing_srs)
     end
 
     private
 
-    # Returns array of Subject records that are eligible for sentence practice
-    # (Guru+ in WaniKani — i.e. user has passed them in WK).
     def resolve_scope
-      base = Subject.guru_plus_for(user)
-                    .where(subject_type: %w[kanji vocabulary])
+      base = Subject.guru_plus_for(user).where(subject_type: %w[kanji vocabulary])
 
       case scope[:type]
       when "level"
@@ -58,7 +67,7 @@ module Practice
         base
       else
         Subject.none
-      end.to_a
+      end.distinct.to_a
     end
 
     def filter_by_stage(review_subjects, srs_map)
@@ -67,9 +76,7 @@ module Practice
                when "guru_plus"       then GURU_PLUS_STAGES
                when "all", nil        then nil
                when Hash              then stage_filter[:stages]
-               else nil
                end
-
       return review_subjects unless stages
 
       review_subjects.select { |s| stages.include?(srs_map[s.id].stage_before_type_cast) }
@@ -77,25 +84,21 @@ module Practice
 
     def pick_subjects(new_subjects, review_subjects)
       target_count = count
-
       case mix_mode
       when "new_only"
         new_subjects.shuffle.first(target_count)
       when "review_only"
         review_subjects.shuffle.first(target_count)
       when "mix"
-        # 70/30 split — but if one bucket is short, fill from the other
-        new_target    = (target_count * 0.7).round
+        new_target = (target_count * 0.7).round
         review_target = target_count - new_target
-
-        new_picks    = new_subjects.shuffle.first(new_target)
+        new_picks = new_subjects.shuffle.first(new_target)
         review_picks = review_subjects.shuffle.first(review_target)
 
-        # Backfill from whichever has surplus
         deficit = target_count - new_picks.size - review_picks.size
         if deficit > 0
-          extras = (new_subjects - new_picks).shuffle.first(deficit) +
-                   (review_subjects - review_picks).shuffle.first(deficit)
+          extras = (new_subjects - new_picks).shuffle +
+                   (review_subjects - review_picks).shuffle
           (new_picks + review_picks + extras.first(deficit)).shuffle
         else
           (new_picks + review_picks).shuffle
@@ -106,13 +109,17 @@ module Practice
     end
 
     def build_questions(subjects, srs_map)
+      tokenizer = ::Tatoeba::Tokenizer.new
+
       subjects.filter_map do |subject|
-        # Determine effective stage: default Apprentice 1 if no SRS yet
         srs = srs_map[subject.id]
         stage = srs&.stage_before_type_cast || 1
 
         phrase = pick_phrase_for(subject, stage)
-        next nil unless phrase # Skip if no phrase available
+        next nil unless phrase
+
+        # Annotate the phrase with token data so the frontend can render hover-able chunks
+        tokens = tokenizer.annotate(phrase.japanese, user: user)
 
         {
           subject_id:       subject.id,
@@ -121,6 +128,7 @@ module Practice
           level:            subject.level,
           characters:       subject.characters,
           target_meaning:   subject.primary_meaning,
+          target_reading:   subject.primary_reading,
           stage:            stage,
           stage_label:      stage_label(stage),
           japanese:         phrase.japanese,
@@ -129,43 +137,41 @@ module Practice
           source_id:        phrase.source_id,
           length:           phrase.length,
           length_bucket:    phrase.length_bucket,
-          # Furigana data: WK can render via official readings, Tatoeba needs kuroshiro client-side
-          needs_kuroshiro:  phrase.source == "tatoeba",
+          tokens:           tokens,
           is_review:        !srs.nil?
         }
       end
     end
 
-    # Phrase selection rules:
-    #   - Apprentice 1-4: Tatoeba phrases first (matched, varied length), WK fallback
-    #   - Guru+: WK context_sentences first (high quality, item-specific), Tatoeba fallback
+    # Pick a phrase whose length fits the stage's allowed bracket.
+    # Prefers exact bracket match, then any phrase, then nil.
     #
-    # We weight by length_bucket within stage:
-    #   Apprentice 1-2 prefers short phrases (bucket 0)
-    #   Apprentice 3-4 prefers medium (bucket 1)
-    #   Guru+ accepts any length (with WK preference)
+    # At Guru+ we prefer WK context_sentences (higher quality, item-specific).
+    # At Apprentice we prefer the shortest available phrases regardless of source.
     def pick_phrase_for(subject, stage)
-      preferred_bucket =
-        case stage
-        when 1..2 then 0
-        when 3..4 then 1
-        else 2
-        end
+      min_len, max_len = STAGE_LENGTH_BRACKETS[stage] || [0, 200]
 
       candidates = subject.phrases.to_a
 
-      # If Guru+, prefer WK
       if stage >= 5
-        wk = candidates.select { |p| p.source == "wanikani" }
-        return wk.sample if wk.any?
+        # Guru+: prefer WK
+        wk_in_bracket = candidates.select { |p| p.source == "wanikani" && fits?(p, min_len, max_len) }
+        return wk_in_bracket.sample if wk_in_bracket.any?
+
+        wk_any = candidates.select { |p| p.source == "wanikani" }
+        return wk_any.sample if wk_any.any?
       end
 
-      # Try preferred bucket first
-      bucket_match = candidates.select { |p| p.length_bucket == preferred_bucket }
-      return bucket_match.sample if bucket_match.any?
+      # All stages: try matching length bracket first
+      in_bracket = candidates.select { |p| fits?(p, min_len, max_len) }
+      return in_bracket.sample if in_bracket.any?
 
-      # Fall back to any phrase
-      candidates.sample
+      # Fall back to shortest available — beats nothing
+      candidates.min_by(&:length)
+    end
+
+    def fits?(phrase, min_len, max_len)
+      phrase.length >= min_len && phrase.length <= max_len
     end
 
     def stage_label(stage)

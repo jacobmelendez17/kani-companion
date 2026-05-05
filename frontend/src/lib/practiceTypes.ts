@@ -1,4 +1,4 @@
-// Existing types stay; new ones added below
+// Existing types stay; sentence-related types updated for tokens.
 
 export interface PracticeSettings {
   default_question_count: number
@@ -12,7 +12,6 @@ export interface PracticeSettings {
   theme: string
   daily_practice_goal: number
   review_order: string
-  // New for sentence practice:
   breakdown_panel_mode?: 'always' | 'never' | 'on_incorrect'
   furigana_default_visible?: boolean
   sentence_default_scope?: 'current_level' | 'all_eligible' | 'custom'
@@ -21,7 +20,7 @@ export interface PracticeSettings {
 }
 
 export interface PracticeQuestion {
-  kind?: 'item' | 'sentence' // discriminator
+  kind?: 'item' | 'sentence'
   subject_id: number
   wanikani_id?: number
   subject_type: 'radical' | 'kanji' | 'vocabulary'
@@ -34,10 +33,33 @@ export interface PracticeQuestion {
   total: number
 }
 
+// Each token in a sentence — produced server-side by MeCab.
+// reading_hira is in hiragana (already converted from MeCab's katakana output).
+// subject_info is populated when the token matches a WK kanji/vocab subject.
+export interface SentenceToken {
+  surface: string
+  dictionary_form: string
+  reading_kata: string | null
+  reading_hira: string | null
+  pos: string | null
+  is_kanji: boolean
+  subject_id: number | null
+  subject_info: {
+    id: number
+    characters: string
+    type: 'kanji' | 'vocabulary'
+    level: number
+    meaning: string | null
+    reading: string | null
+    unlocked: boolean
+  } | null
+}
+
 export interface SentenceQuestion extends PracticeQuestion {
   kind: 'sentence'
   phrase_id: number
   target_meaning: string
+  target_reading: string | null
   stage: number
   stage_label: string
   japanese: string
@@ -46,7 +68,7 @@ export interface SentenceQuestion extends PracticeQuestion {
   source_id: string | null
   length: number
   length_bucket: number
-  needs_kuroshiro: boolean
+  tokens: SentenceToken[]
   is_review: boolean
 }
 
@@ -70,7 +92,6 @@ export interface SetupParams {
   count?: number
   practice_mode?: string
   review_order?: string
-  // Sentence-specific:
   scope_type?: 'level' | 'subject_ids' | 'all_eligible'
   subject_ids?: number[]
   stage_filter?: string
@@ -114,7 +135,6 @@ export interface AnswerResponse {
   next_question: PracticeQuestion | SentenceQuestion | null
   is_last: boolean
   progress: { answered: number; total: number; correct: number; wrong: number }
-  // Sentence-only:
   srs_change?: SrsChange | null
   vocab_breakdown?: VocabBreakdownEntry[]
 }
@@ -145,7 +165,6 @@ export type PracticeMode = 'kanji_to_meaning' | 'kanji_to_reading' | 'mixed'
 export type ItemType = 'radical' | 'kanji' | 'vocabulary'
 export type ReviewOrder = 'random' | 'weakest_first' | 'newest_first' | 'oldest_first'
 
-// Sentence practice scope/stage/mix types
 export type SentenceScopeType = 'level' | 'subject_ids' | 'all_eligible'
 export type StageFilter = 'all' | 'apprentice_only' | 'guru_plus'
 export type MixMode = 'new_only' | 'review_only' | 'mix'

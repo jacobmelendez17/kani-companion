@@ -7,8 +7,8 @@ import {
   PracticeSession,
   PracticeSettings,
   SentenceQuestion,
+  SentenceToken,
 } from '../../lib/practiceTypes'
-import { renderJapaneseHtml, highlightTarget } from '../../lib/furigana'
 
 interface LocationState {
   firstQuestion?: SentenceQuestion
@@ -33,29 +33,23 @@ export default function PracticeSentenceSessionPage() {
   const [error, setError] = useState<string | null>(null)
   const [exitDialogOpen, setExitDialogOpen] = useState(false)
 
-  // Furigana toggle (default ON per user choice, persisted)
   const [showFurigana, setShowFurigana] = useState(true)
-
-  // Settings (for breakdown panel mode)
+  const [hoveredToken, setHoveredToken] = useState<number | null>(null)
   const [settings, setSettings] = useState<PracticeSettings | null>(null)
-
-  // Rendered Japanese HTML (with furigana) — async
-  const [renderedJa, setRenderedJa] = useState<string>('')
-  const [renderingJa, setRenderingJa] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Load settings (for breakdown panel mode + furigana default)
+  // Settings load (for breakdown panel mode + furigana default)
   useEffect(() => {
     api.get('/practice_setting').then((r) => {
       setSettings(r.data)
       if (typeof r.data.furigana_default_visible === 'boolean') {
         setShowFurigana(r.data.furigana_default_visible)
       }
-    }).catch(() => {/* settings optional */})
+    }).catch(() => { /* settings optional */ })
   }, [])
 
-  // Initialize question if not in nav state
+  // Load session if not already from nav state
   useEffect(() => {
     if (question || !id) return
     api
@@ -85,40 +79,17 @@ export default function PracticeSentenceSessionPage() {
     }
   }, [question, progress.total])
 
-  // Render Japanese with furigana (async — kuroshiro takes time on first load)
-  useEffect(() => {
-    if (!question) return
-    setRenderingJa(true)
-    let canceled = false
-
-    renderJapaneseHtml(question.japanese, { showFurigana })
-      .then((html) => {
-        if (canceled) return
-        // Highlight the target word inside the rendered HTML.
-        // Note: highlighting AFTER ruby tags requires a more careful approach;
-        // we do a best-effort by wrapping the target characters wherever they appear.
-        const highlighted = highlightInRubyHtml(html, question.characters)
-        setRenderedJa(highlighted)
-      })
-      .catch(() => {
-        if (canceled) return
-        setRenderedJa(highlightTarget(question.japanese, question.characters))
-      })
-      .finally(() => {
-        if (!canceled) setRenderingJa(false)
-      })
-
-    return () => {
-      canceled = true
-    }
-  }, [question, showFurigana])
-
   // Auto-focus input when asking
   useEffect(() => {
     if (phase === 'asking' && inputRef.current) {
       inputRef.current.focus()
     }
   }, [phase, question?.subject_id])
+
+  // Reset hover state on question change
+  useEffect(() => {
+    setHoveredToken(null)
+  }, [question?.subject_id])
 
   const submitAnswer = useCallback(async () => {
     if (!id || !question || submitting || !userAnswer.trim()) return
@@ -141,15 +112,13 @@ export default function PracticeSentenceSessionPage() {
 
   const advance = useCallback(async () => {
     if (!feedback) return
-
     if (feedback.is_last) {
       try {
         await api.post(`/practice_sessions/${id}/complete`)
-      } catch {/* continue regardless */}
+      } catch { /* fall through */ }
       navigate(`/practice/sentence/session/${id}/summary`, { replace: true })
       return
     }
-
     setQuestion(feedback.next_question as SentenceQuestion)
     setUserAnswer('')
     setFeedback(null)
@@ -172,11 +141,8 @@ export default function PracticeSentenceSessionPage() {
         }
       } else if (phase === 'asking') {
         if (e.key === 'Escape') setExitDialogOpen(true)
-        if (e.key === 'f' || e.key === 'F') {
-          // Don't trigger if user is typing in the input
-          if (document.activeElement !== inputRef.current) {
-            setShowFurigana((v) => !v)
-          }
+        if ((e.key === 'f' || e.key === 'F') && document.activeElement !== inputRef.current) {
+          setShowFurigana((v) => !v)
         }
       }
     }
@@ -188,7 +154,7 @@ export default function PracticeSentenceSessionPage() {
     if (!id) return
     try {
       await api.post(`/practice_sessions/${id}/abandon`)
-    } catch {/* ignore */}
+    } catch { /* ignore */ }
     setExitDialogOpen(false)
     navigate('/dashboard')
   }
@@ -215,18 +181,18 @@ export default function PracticeSentenceSessionPage() {
   }
 
   const progressPercent = progress.total > 0 ? (progress.answered / progress.total) * 100 : 0
-
-  // Decide whether to show breakdown panel based on user setting
   const breakdownMode = settings?.breakdown_panel_mode || 'on_incorrect'
   const showBreakdown =
     phase === 'feedback' && feedback && (
-      breakdownMode === 'always' ||
-      (breakdownMode === 'on_incorrect' && !feedback.correct)
+      breakdownMode === 'always' || (breakdownMode === 'on_incorrect' && !feedback.correct)
     )
+
+  // During the asking phase, the target word stays hidden. After feedback,
+  // we visually mark it (but for now we just include it in the breakdown).
+  const isFeedback = phase === 'feedback'
 
   return (
     <div className="min-h-screen bg-cream flex flex-col relative">
-      {/* Subtle bg grid */}
       <div
         className="absolute inset-0 opacity-[0.04] pointer-events-none"
         style={{
@@ -236,7 +202,6 @@ export default function PracticeSentenceSessionPage() {
         }}
       />
 
-      {/* Top progress bar */}
       <header className="relative px-5 sm:px-8 py-4 flex justify-between items-center gap-5 border-b-[3px] border-ink bg-cream z-10">
         <button
           onClick={() => setExitDialogOpen(true)}
@@ -274,7 +239,7 @@ export default function PracticeSentenceSessionPage() {
       </header>
 
       <main className="relative flex-1 px-5 sm:px-8 py-8 max-w-[900px] mx-auto w-full z-10">
-        {/* Top tags row */}
+        {/* Top tags row — NO target word shown here anymore */}
         <div className="flex flex-wrap gap-2 justify-center mb-4">
           <span
             className="inline-flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.15em] bg-ink text-mint px-3 py-1.5 rounded-full border-2 border-ink"
@@ -282,21 +247,26 @@ export default function PracticeSentenceSessionPage() {
           >
             // TRANSLATE
           </span>
-          <span className={`inline-flex items-center gap-2 font-mono text-[0.62rem] uppercase tracking-wider px-2.5 py-1 rounded-full border-2 border-ink font-bold ${
-            question.stage <= 4 ? 'bg-yellow-pop' : 'bg-mint'
-          }`}>
-            {question.stage_label} · {question.stage <= 4 ? 'PHRASE' : 'CONTEXT SENTENCE'}
-          </span>
+          {/* Stage label removed during asking — only shown in feedback so it doesn't telegraph difficulty */}
+          {isFeedback && (
+            <span className={`inline-flex items-center gap-2 font-mono text-[0.62rem] uppercase tracking-wider px-2.5 py-1 rounded-full border-2 border-ink font-bold ${
+              question.stage <= 4 ? 'bg-yellow-pop' : 'bg-mint'
+            }`}>
+              {question.stage_label}
+            </span>
+          )}
           <button
             onClick={() => setShowFurigana((v) => !v)}
-            className="inline-flex items-center gap-2 font-mono text-[0.62rem] uppercase tracking-wider px-2.5 py-1 rounded-full border-2 border-ink bg-white font-bold hover:bg-pink-soft"
+            className={`inline-flex items-center gap-2 font-mono text-[0.62rem] uppercase tracking-wider px-2.5 py-1 rounded-full border-2 border-ink font-bold hover:bg-pink-soft transition-colors ${
+              showFurigana ? 'bg-mint' : 'bg-white'
+            }`}
             title="Toggle furigana (F)"
           >
             ふ {showFurigana ? 'ON' : 'OFF'}
           </button>
         </div>
 
-        {/* The Floating Card */}
+        {/* Floating Card */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`${question.subject_id}-${question.phrase_id}`}
@@ -307,42 +277,60 @@ export default function PracticeSentenceSessionPage() {
             className="bg-white border-[3px] border-ink rounded-3xl overflow-hidden mx-auto max-w-[760px]"
             style={{ boxShadow: '8px 8px 0 #1a0b2e' }}
           >
-            {/* Pink header section with the Japanese */}
             <div className="relative bg-pink-hot text-cream p-7 sm:p-10 text-center">
               <span className="absolute top-3 left-4 font-mono text-[0.62rem] uppercase tracking-wider opacity-85">
-                ⌐ FROM {question.source.toUpperCase()}
+                ⌐ {question.source.toUpperCase()}
                 {question.source === 'tatoeba' && question.source_id && (
                   <span className="opacity-60"> #{question.source_id}</span>
                 )}
               </span>
+
+              {/* During asking phase: just show "LEVEL X" — no target word */}
               <span className="absolute top-3 right-4 font-mono text-[0.62rem] uppercase tracking-wider opacity-85">
-                LV {question.level} · {question.characters}
+                LEVEL {question.level}
               </span>
 
+              {/* Tokenized sentence rendering */}
               <div className="my-3 sm:my-5">
-                {renderingJa ? (
-                  <div className="opacity-60 font-mono text-sm">rendering…</div>
-                ) : (
-                  <div
-                    className="ja-sentence font-body font-bold leading-[1.6] tracking-wider text-[clamp(1.3rem,3vw,1.9rem)]"
-                    dangerouslySetInnerHTML={{ __html: renderedJa }}
-                  />
-                )}
+                <TokenizedSentence
+                  tokens={question.tokens || []}
+                  fallback={question.japanese}
+                  showFurigana={showFurigana}
+                  hoveredIndex={hoveredToken}
+                  onHover={setHoveredToken}
+                  isFeedback={isFeedback}
+                  targetSubjectId={question.subject_id}
+                />
               </div>
+            </div>
 
-              {question.source === 'tatoeba' && showFurigana && (
-                <div className="font-mono text-[0.6rem] opacity-60 mt-2">
-                  ⓘ Furigana auto-generated
-                </div>
+            {/* Footer — different content per phase */}
+            <div className="bg-ink text-cream px-5 py-3 flex justify-between items-center font-mono text-[0.65rem] uppercase tracking-wider gap-2 flex-wrap">
+              <span>{question.length} chars</span>
+              {isFeedback ? (
+                <span>Target: <span className="text-mint">{question.characters}</span> · "{question.target_meaning}"</span>
+              ) : (
+                <span className="opacity-65">hover words for hints · target hidden</span>
               )}
             </div>
-
-            {/* Dark footer with metadata */}
-            <div className="bg-ink text-cream px-5 py-3 flex justify-between items-center font-mono text-[0.65rem] uppercase tracking-wider">
-              <span>{question.length} chars</span>
-              <span>Target: <span className="text-mint">{question.characters}</span> · "{question.target_meaning}"</span>
-            </div>
           </motion.div>
+        </AnimatePresence>
+
+        {/* Hover popover anchored below the card */}
+        <AnimatePresence>
+          {hoveredToken !== null && question.tokens && question.tokens[hoveredToken] && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="mt-3 mx-auto max-w-[600px] bg-white border-[2.5px] border-ink rounded-xl p-4 shadow-hard-md"
+            >
+              <TokenInfo
+                token={question.tokens[hoveredToken]}
+                hideTargetInfo={!isFeedback && question.tokens[hoveredToken].subject_id === question.subject_id}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Feedback / Input area */}
@@ -380,7 +368,6 @@ export default function PracticeSentenceSessionPage() {
                 )}
               </div>
 
-              {/* Optional vocab breakdown */}
               {showBreakdown && feedback.vocab_breakdown && feedback.vocab_breakdown.length > 0 && (
                 <div className="mt-4 bg-white border-[2.5px] border-ink rounded-2xl p-5 shadow-hard-md">
                   <div className="font-mono text-[0.65rem] uppercase tracking-[0.12em] opacity-60 mb-2.5">
@@ -471,7 +458,7 @@ export default function PracticeSentenceSessionPage() {
                   </button>
                 </div>
                 <div className="mt-3 font-mono text-[0.7rem] opacity-55 text-center">
-                  <Kbd>Enter</Kbd> submit · <Kbd>F</Kbd> furigana · <Kbd>Esc</Kbd> exit
+                  <Kbd>Enter</Kbd> submit · <Kbd>F</Kbd> furigana · <Kbd>Esc</Kbd> exit · click any word for info
                 </div>
                 {error && (
                   <div className="mt-3 bg-pink-soft border-2 border-pink-hot rounded-md p-2 font-mono text-[0.78rem]">
@@ -536,23 +523,165 @@ export default function PracticeSentenceSessionPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+// Renders the sentence as individual hoverable tokens.
+// Each token shows surface + (optionally) furigana above it.
+// The target word is NOT highlighted during asking — it looks identical to others.
+// Hovering any token sets `hoveredIndex` so the parent can render a popover.
+function TokenizedSentence({
+  tokens,
+  fallback,
+  showFurigana,
+  hoveredIndex,
+  onHover,
+  isFeedback,
+  targetSubjectId,
+}: {
+  tokens: SentenceToken[]
+  fallback: string
+  showFurigana: boolean
+  hoveredIndex: number | null
+  onHover: (i: number | null) => void
+  isFeedback: boolean
+  targetSubjectId: number
+}) {
+  // Defensive: if tokens are missing/empty, just render the raw text.
+  if (!tokens || tokens.length === 0) {
+    return (
+      <span className="font-body font-bold leading-[1.6] text-[clamp(1.3rem,3vw,1.9rem)]">
+        {fallback}
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-block font-body font-bold leading-[1.7] text-[clamp(1.3rem,3vw,1.9rem)]">
+      {tokens.map((t, i) => {
+        const showRuby = showFurigana && t.is_kanji && t.reading_hira
+        const isHovered = hoveredIndex === i
+        const isTarget = t.subject_id === targetSubjectId
+        const hasInfo = !!t.subject_id
+
+        // During asking phase, the target token visually matches others.
+        // After feedback, target gets a yellow underline.
+        const targetClass = isFeedback && isTarget
+          ? 'token-target'
+          : ''
+
+        const hoverClass = hasInfo ? 'token-clickable' : ''
+        const hoveredClass = isHovered ? 'token-hovered' : ''
+
+        return (
+          <span
+            key={i}
+            className={`token ${hoverClass} ${hoveredClass} ${targetClass}`}
+            onMouseEnter={() => hasInfo && onHover(i)}
+            onMouseLeave={() => onHover(null)}
+            onClick={() => hasInfo && onHover(isHovered ? null : i)}
+          >
+            {showRuby ? (
+              <ruby>
+                {t.surface}
+                <rt>{t.reading_hira}</rt>
+              </ruby>
+            ) : (
+              t.surface
+            )}
+          </span>
+        )
+      })}
 
       <style>{`
-        .ja-sentence ruby { ruby-position: over; }
-        .ja-sentence rt {
+        .token {
+          position: relative;
+          padding: 0 1px;
+          border-radius: 3px;
+          transition: background 0.12s, color 0.12s;
+        }
+        .token-clickable {
+          cursor: pointer;
+        }
+        .token-clickable:hover,
+        .token-hovered {
+          background: rgba(255, 214, 10, 0.4);
+          color: #1a0b2e;
+        }
+        .token-target {
+          background: #ffd60a;
+          color: #1a0b2e;
+          padding: 0 4px;
+          border-radius: 4px;
+        }
+        ruby {
+          ruby-position: over;
+        }
+        rt {
           font-size: 0.45em;
           font-family: 'Zen Maru Gothic', sans-serif;
           font-weight: 500;
           opacity: 0.85;
           line-height: 1.1;
         }
-        .target-word {
-          background: #ffd60a;
-          color: #1a0b2e;
-          padding: 0 4px;
-          border-radius: 4px;
-        }
       `}</style>
+    </span>
+  )
+}
+
+// Tooltip-style info card shown when a token is hovered/clicked.
+// If the user is in the asking phase AND this is the target word, we hide the meaning
+// (otherwise hovering the target would give away the answer).
+function TokenInfo({
+  token,
+  hideTargetInfo,
+}: {
+  token: SentenceToken
+  hideTargetInfo: boolean
+}) {
+  if (hideTargetInfo) {
+    return (
+      <div className="text-center font-mono text-[0.78rem] opacity-65">
+        ⓘ This is the word you need to translate — answer first to see its info
+      </div>
+    )
+  }
+
+  if (!token.subject_info) {
+    // Token isn't a known WK item — just show the basic morphology
+    return (
+      <div className="text-center">
+        <div className="font-body font-black text-2xl mb-1">{token.surface}</div>
+        {token.reading_hira && (
+          <div className="font-body text-base opacity-65 mb-2">{token.reading_hira}</div>
+        )}
+        <div className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50">
+          {token.pos === '助詞' ? 'particle' :
+           token.pos === '助動詞' ? 'auxiliary' :
+           token.pos || 'unknown'}
+          {token.dictionary_form !== token.surface && ` · base: ${token.dictionary_form}`}
+        </div>
+      </div>
+    )
+  }
+
+  const info = token.subject_info
+  return (
+    <div className="flex items-start gap-4">
+      <div className="font-body font-black text-3xl">{info.characters}</div>
+      <div className="flex-1">
+        <div className="font-mono text-[0.6rem] uppercase tracking-wider opacity-55 mb-1">
+          {info.type} · LEVEL {info.level}
+          {!info.unlocked && <span className="ml-2 text-pink-hot">· not unlocked yet</span>}
+        </div>
+        {info.reading && (
+          <div className="font-body text-base opacity-75">{info.reading}</div>
+        )}
+        {info.meaning && (
+          <div className="font-body font-bold text-base mt-0.5">{info.meaning}</div>
+        )}
+      </div>
     </div>
   )
 }
@@ -561,16 +690,4 @@ function Kbd({ children }: { children: React.ReactNode }) {
   return (
     <kbd className="bg-ink text-cream px-1.5 py-0.5 rounded text-[0.65rem] mx-0.5">{children}</kbd>
   )
-}
-
-// Best-effort highlighter for the target word inside an HTML string with possible <ruby> tags.
-// Looks for the target characters and wraps them in a target-word span. If they're inside ruby,
-// we wrap the entire <ruby>…</ruby> block. Imperfect but works for most cases.
-function highlightInRubyHtml(html: string, target: string): string {
-  if (!target || !html.includes(target)) return html
-
-  // Try to wrap any contiguous occurrence of target characters
-  const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const re = new RegExp(`(${escaped})`, 'g')
-  return html.replace(re, '<span class="target-word">$1</span>')
 }

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_05_000002) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_06_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -59,9 +59,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_000002) do
     t.boolean "is_primary", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "position"
     t.index ["phrase_id", "subject_id"], name: "index_phrase_subjects_on_phrase_id_and_subject_id", unique: true
     t.index ["phrase_id"], name: "index_phrase_subjects_on_phrase_id"
     t.index ["subject_id", "is_primary"], name: "index_phrase_subjects_on_subject_id_and_is_primary"
+    t.index ["subject_id", "position"], name: "index_phrase_subjects_on_subject_id_and_position"
     t.index ["subject_id"], name: "index_phrase_subjects_on_subject_id"
   end
 
@@ -189,8 +191,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_05_000002) do
     t.string "session_token"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "admin", default: false, null: false
     t.index "lower((email)::text)", name: "index_users_on_lower_email", unique: true
     t.index "lower((username)::text)", name: "index_users_on_lower_username", unique: true
+    t.index ["admin"], name: "index_users_on_admin"
   end
 
   create_table "wanikani_profiles", force: :cascade do |t|

@@ -79,7 +79,7 @@ module Api
       private
 
       # =========================
-      # ITEM SESSION
+      # ITEM SESSION (unchanged)
       # =========================
       def create_item_session
         item_types = parse_array(params[:item_types]).presence || %w[kanji vocabulary]
@@ -91,13 +91,9 @@ module Api
         level_min, level_max = levels.any? ? [levels.min, levels.max] : [1, 60]
 
         builder_args = {
-          user:         current_user,
-          session_type: "item",
-          level_min:    level_min,
-          level_max:    level_max,
-          item_types:   item_types,
-          count:        count,
-          review_order: order
+          user: current_user, session_type: "item",
+          level_min: level_min, level_max: level_max,
+          item_types: item_types, count: count, review_order: order
         }
         subjects = ::Practice::SessionBuilder.new(**builder_args).call
         subjects = subjects.select { |s| levels.include?(s.level) } if levels.any?
@@ -107,10 +103,8 @@ module Api
         end
 
         session = current_user.practice_sessions.create!(
-          session_type:    "item",
-          practice_mode:   mode,
-          level_range:     [level_min, level_max],
-          item_types:      item_types,
+          session_type:    "item", practice_mode: mode,
+          level_range:     [level_min, level_max], item_types: item_types,
           total_questions: subjects.size
         )
 
@@ -149,15 +143,10 @@ module Api
 
       def make_item_question(subject, question_type)
         {
-          kind:          "item",
-          subject_id:    subject.id,
-          wanikani_id:   subject.wanikani_id,
-          subject_type:  subject.subject_type,
-          level:         subject.level,
-          characters:    subject.characters,
-          slug:          subject.slug,
-          question_type: question_type,
-          prompt:        subject.characters
+          kind: "item", subject_id: subject.id, wanikani_id: subject.wanikani_id,
+          subject_type: subject.subject_type, level: subject.level,
+          characters: subject.characters, slug: subject.slug,
+          question_type: question_type, prompt: subject.characters
         }
       end
 
@@ -204,7 +193,7 @@ module Api
 
         if questions.empty?
           return render json: {
-            error: "No items + phrases match. You may need to sync WaniKani, run the Tatoeba import, or pick different filters.",
+            error: "No items + phrases available for practice. Items may all be gated (waiting for next review). Try changing filters or come back later.",
             kind:  "empty_selection"
           }, status: :unprocessable_entity
         end
@@ -212,8 +201,7 @@ module Api
         questions = questions.map { |q| q.merge(kind: "sentence") }
 
         session = current_user.practice_sessions.create!(
-          session_type:    "sentence",
-          practice_mode:   "ja_to_en",
+          session_type:    "sentence", practice_mode: "ja_to_en",
           level_range:     levels.any? ? [levels.min, levels.max] : [1, 60],
           item_types:      %w[kanji vocabulary],
           total_questions: questions.size
@@ -251,6 +239,10 @@ module Api
                            })
       end
 
+      # SRS update — now with gating!
+      # If the item is currently gated (next_review_at hasn't passed), we still
+      # record the practice attempt but DO NOT change the SRS stage. The response
+      # includes a `gated: true` flag so the UI can explain why.
       def update_local_srs(subject, correct)
         srs = LocalSrsState.find_or_create_by!(
           user: current_user, subject: subject, practice_kind: "sentence"
@@ -258,23 +250,59 @@ module Api
 
         previous_stage = srs.stage_before_type_cast
 
+        # GATED: count the attempt but don't change the stage
+        if srs.gated?
+          if correct
+            srs.update!(correct_count: srs.correct_count + 1)
+          else
+            srs.update!(incorrect_count: srs.incorrect_count + 1)
+          end
+
+          return {
+            gated:           true,
+            previous:        stage_label(previous_stage),
+            current:         stage_label(previous_stage),
+            direction:       nil,
+            next_review_at:  srs.next_review_at,
+            next_review_in:  humanize_time_until(srs.next_review_at)
+          }
+        end
+
+        # NOT GATED: SRS moves
         if correct
           srs.update!(correct_count: srs.correct_count + 1)
           srs.promote!
         else
           srs.update!(incorrect_count: srs.incorrect_count + 1)
-          new_stage = [srs.stage_before_type_cast - 1, 1].max
-          srs.update!(stage: new_stage, current_streak: 0, last_reviewed_at: Time.current)
+          srs.demote!
         end
 
         srs.reload
         return nil if previous_stage == srs.stage_before_type_cast
 
         {
-          previous:  stage_label(previous_stage),
-          current:   stage_label(srs.stage_before_type_cast),
-          direction: correct ? "promoted" : "demoted"
+          gated:          false,
+          previous:       stage_label(previous_stage),
+          current:        stage_label(srs.stage_before_type_cast),
+          direction:      correct ? "promoted" : "demoted",
+          next_review_at: srs.next_review_at,
+          next_review_in: humanize_time_until(srs.next_review_at)
         }
+      end
+
+      def humanize_time_until(t)
+        return nil unless t
+
+        seconds = (t - Time.current).to_i
+        return "now" if seconds <= 0
+
+        if seconds < 3600
+          "#{(seconds / 60.0).round}m"
+        elsif seconds < 86_400
+          "#{(seconds / 3600.0).round}h"
+        else
+          "#{(seconds / 86_400.0).round}d"
+        end
       end
 
       def stage_label(stage)
@@ -289,12 +317,9 @@ module Api
 
       def subject_sentence_payload(subject, question)
         {
-          id:         subject.id,
-          characters: subject.characters,
-          type:       subject.subject_type,
-          level:      subject.level,
-          meaning:    subject.primary_meaning,
-          reading:    subject.primary_reading,
+          id: subject.id, characters: subject.characters,
+          type: subject.subject_type, level: subject.level,
+          meaning: subject.primary_meaning, reading: subject.primary_reading,
           phrase: {
             id:        question[:phrase_id]      || question["phrase_id"],
             japanese:  question[:japanese]       || question["japanese"],
@@ -305,19 +330,12 @@ module Api
         }
       end
 
-      # Builds the post-answer vocab breakdown using the tokens we already
-      # computed at session-build time. Each token that maps to a WK subject
-      # the user has unlocked becomes an entry. Target is highlighted.
       def build_breakdown_from_tokens(question, target_subject)
         tokens = question[:tokens] || question["tokens"] || []
         target_id = target_subject.id
 
-        # Take only tokens that successfully matched a WK subject
-        matched = tokens.select do |t|
-          (t[:subject_id] || t["subject_id"]).present?
-        end
+        matched = tokens.select { |t| (t[:subject_id] || t["subject_id"]).present? }
 
-        # Deduplicate by subject_id (a vocab item may appear multiple times)
         seen_ids = Set.new
         uniq_matched = matched.select do |t|
           sid = t[:subject_id] || t["subject_id"]
@@ -340,8 +358,6 @@ module Api
           }
         end
 
-        # Always include the target subject even if it didn't show up as a token
-        # (could happen if the phrase doesn't actually contain it — defensive)
         unless breakdown.any? { |b| b[:is_target] }
           breakdown.unshift({
             subject_id: target_subject.id,
@@ -391,11 +407,8 @@ module Api
         index     = session.practice_answers.count
 
         PracticeAnswer.create!(
-          practice_session: session,
-          subject:          subject,
-          question_type:    question_type,
-          user_answer:      user_answer,
-          correct:          correct
+          practice_session: session, subject: subject,
+          question_type: question_type, user_answer: user_answer, correct: correct
         )
 
         session.increment!(correct ? :correct_count : :incorrect_count)
@@ -405,16 +418,12 @@ module Api
         is_last       = next_question.nil?
 
         response = {
-          correct:       correct,
-          expected:      expected,
-          subject:       subject_payload,
+          correct: correct, expected: expected, subject: subject_payload,
           next_question: next_question ? next_question.merge(index: next_index, total: questions.size) : nil,
-          is_last:       is_last,
+          is_last: is_last,
           progress: {
-            answered: next_index,
-            total:    questions.size,
-            correct:  session.correct_count,
-            wrong:    session.incorrect_count
+            answered: next_index, total: questions.size,
+            correct: session.correct_count, wrong: session.incorrect_count
           }
         }.merge(extra)
 
@@ -439,76 +448,48 @@ module Api
 
       def stored_setup_params(session)
         Rails.cache.read(session_setup_key(session.id)) || {
-          session_type:  session.session_type,
-          item_types:    session.item_types,
-          levels:        session.level_range,
-          practice_mode: session.practice_mode
+          session_type: session.session_type, item_types: session.item_types,
+          levels: session.level_range, practice_mode: session.practice_mode
         }
       end
 
       def session_payload(session)
         {
-          id:              session.id,
-          session_type:    session.session_type,
-          practice_mode:   session.practice_mode,
-          total_questions: session.total_questions,
-          correct_count:   session.correct_count,
-          incorrect_count: session.incorrect_count,
-          status:          session.status,
-          started_at:      session.started_at,
-          completed_at:    session.completed_at,
-          accuracy:        session.accuracy
+          id: session.id, session_type: session.session_type,
+          practice_mode: session.practice_mode, total_questions: session.total_questions,
+          correct_count: session.correct_count, incorrect_count: session.incorrect_count,
+          status: session.status, started_at: session.started_at,
+          completed_at: session.completed_at, accuracy: session.accuracy
         }
       end
 
       def subject_detail_payload(subject)
-        {
-          id:         subject.id,
-          characters: subject.characters,
-          type:       subject.subject_type,
-          level:      subject.level,
-          meanings:   subject.meanings,
-          readings:   subject.readings
-        }
+        { id: subject.id, characters: subject.characters, type: subject.subject_type,
+          level: subject.level, meanings: subject.meanings, readings: subject.readings }
       end
 
       def answer_summary_payload(answer, session)
         subject = answer.subject
         if session.session_type == "sentence"
-          {
-            subject_id:    subject.id,
-            characters:    subject.characters,
-            type:          subject.subject_type,
-            level:         subject.level,
-            question_type: answer.question_type,
-            user_answer:   answer.user_answer,
-            expected:      { primary: subject.primary_meaning, accepted: [subject.primary_meaning].compact }
-          }
+          { subject_id: subject.id, characters: subject.characters, type: subject.subject_type,
+            level: subject.level, question_type: answer.question_type,
+            user_answer: answer.user_answer,
+            expected: { primary: subject.primary_meaning, accepted: [subject.primary_meaning].compact } }
         else
-          {
-            subject_id:    subject.id,
-            characters:    subject.characters,
-            type:          subject.subject_type,
-            level:         subject.level,
-            question_type: answer.question_type,
-            user_answer:   answer.user_answer,
-            expected:      expected_answers(subject, answer.question_type)
-          }
+          { subject_id: subject.id, characters: subject.characters, type: subject.subject_type,
+            level: subject.level, question_type: answer.question_type,
+            user_answer: answer.user_answer, expected: expected_answers(subject, answer.question_type) }
         end
       end
 
       def expected_answers(subject, question_type)
         case question_type
         when "meaning"
-          {
-            primary:  subject.primary_meaning,
-            accepted: (subject.meanings || []).select { |m| m["accepted_answer"] }.map { |m| m["meaning"] }
-          }
+          { primary:  subject.primary_meaning,
+            accepted: (subject.meanings || []).select { |m| m["accepted_answer"] }.map { |m| m["meaning"] } }
         when "reading"
-          {
-            primary:  subject.primary_reading,
-            accepted: (subject.readings || []).select { |r| r["accepted_answer"] }.map { |r| r["reading"] }
-          }
+          { primary:  subject.primary_reading,
+            accepted: (subject.readings || []).select { |r| r["accepted_answer"] }.map { |r| r["reading"] } }
         else
           { primary: nil, accepted: [] }
         end

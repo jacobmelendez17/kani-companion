@@ -22,11 +22,20 @@ Rails.application.routes.draw do
       resources :subjects, only: %i[index]
       resource :practice_setting, only: %i[show update]
 
-      # Sentence practice helper endpoints
       get "sentence_practice/eligible_subjects", to: "sentence_practice#eligible_subjects"
       get "sentence_practice/eligibility",       to: "sentence_practice#eligibility"
 
       get "dashboard", to: "dashboard#show"
+
+      # Admin
+      namespace :admin do
+        get  "phrases/search_subjects", to: "phrases#search_subjects"
+        post "phrases/reorder",         to: "phrases#reorder"
+        resources :phrases, only: %i[index create update destroy]
+      end
+
+      # Profile endpoint to expose admin flag to frontend
+      get "me", to: "auth#me"
     end
   end
 end

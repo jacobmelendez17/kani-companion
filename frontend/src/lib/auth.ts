@@ -5,6 +5,7 @@ interface User {
   id: number
   email: string
   username: string
+  admin: boolean
 }
 
 interface AuthState {
@@ -15,9 +16,10 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   hydrate: () => void
+  fetchUser: () => Promise<void>
 }
 
-export const useAuth = create<AuthState>((set) => ({
+export const useAuth = create<AuthState>((set, get) => ({
   user: null,
   token: localStorage.getItem('auth_token'),
   loading: false,
@@ -57,5 +59,20 @@ export const useAuth = create<AuthState>((set) => ({
   hydrate: () => {
     const token = localStorage.getItem('auth_token')
     if (token) set({ token })
+  },
+
+  // Refetches user info from /me — used to load `admin` flag for users who
+  // logged in before the admin column existed.
+  fetchUser: async () => {
+    const { token } = get()
+    if (!token) return
+    try {
+      const { data } = await api.get('/me')
+      set({ user: data.user })
+    } catch {
+      // token may be invalid; clear it
+      localStorage.removeItem('auth_token')
+      set({ user: null, token: null })
+    }
   },
 }))

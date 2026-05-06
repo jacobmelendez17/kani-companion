@@ -39,7 +39,6 @@ export default function PracticeSentenceSessionPage() {
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Settings load (for breakdown panel mode + furigana default)
   useEffect(() => {
     api.get('/practice_setting').then((r) => {
       setSettings(r.data)
@@ -49,7 +48,6 @@ export default function PracticeSentenceSessionPage() {
     }).catch(() => { /* settings optional */ })
   }, [])
 
-  // Load session if not already from nav state
   useEffect(() => {
     if (question || !id) return
     api
@@ -79,14 +77,12 @@ export default function PracticeSentenceSessionPage() {
     }
   }, [question, progress.total])
 
-  // Auto-focus input when asking
   useEffect(() => {
     if (phase === 'asking' && inputRef.current) {
       inputRef.current.focus()
     }
   }, [phase, question?.subject_id])
 
-  // Reset hover state on question change
   useEffect(() => {
     setHoveredToken(null)
   }, [question?.subject_id])
@@ -125,7 +121,6 @@ export default function PracticeSentenceSessionPage() {
     setPhase('asking')
   }, [feedback, id, navigate])
 
-  // Keyboard shortcuts
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (exitDialogOpen) {
@@ -150,6 +145,8 @@ export default function PracticeSentenceSessionPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [phase, advance, exitDialogOpen])
 
+  // "End session" goes straight to dashboard (per user's choice).
+  // "Return to setup" goes back to /practice/sentence/setup; session stays in_progress.
   async function handleEndSession() {
     if (!id) return
     try {
@@ -157,6 +154,11 @@ export default function PracticeSentenceSessionPage() {
     } catch { /* ignore */ }
     setExitDialogOpen(false)
     navigate('/dashboard')
+  }
+
+  function handleReturnToSetup() {
+    setExitDialogOpen(false)
+    navigate('/practice/sentence/setup')
   }
 
   if (error && !question) {
@@ -186,10 +188,6 @@ export default function PracticeSentenceSessionPage() {
     phase === 'feedback' && feedback && (
       breakdownMode === 'always' || (breakdownMode === 'on_incorrect' && !feedback.correct)
     )
-
-  // During the asking phase, the target word stays hidden. After feedback,
-  // we visually mark it (but for now we just include it in the breakdown).
-  const isFeedback = phase === 'feedback'
 
   return (
     <div className="min-h-screen bg-cream flex flex-col relative">
@@ -239,7 +237,6 @@ export default function PracticeSentenceSessionPage() {
       </header>
 
       <main className="relative flex-1 px-5 sm:px-8 py-8 max-w-[900px] mx-auto w-full z-10">
-        {/* Top tags row — NO target word shown here anymore */}
         <div className="flex flex-wrap gap-2 justify-center mb-4">
           <span
             className="inline-flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.15em] bg-ink text-mint px-3 py-1.5 rounded-full border-2 border-ink"
@@ -247,14 +244,11 @@ export default function PracticeSentenceSessionPage() {
           >
             // TRANSLATE
           </span>
-          {/* Stage label removed during asking — only shown in feedback so it doesn't telegraph difficulty */}
-          {isFeedback && (
-            <span className={`inline-flex items-center gap-2 font-mono text-[0.62rem] uppercase tracking-wider px-2.5 py-1 rounded-full border-2 border-ink font-bold ${
-              question.stage <= 4 ? 'bg-yellow-pop' : 'bg-mint'
-            }`}>
-              {question.stage_label}
-            </span>
-          )}
+          <span className={`inline-flex items-center gap-2 font-mono text-[0.62rem] uppercase tracking-wider px-2.5 py-1 rounded-full border-2 border-ink font-bold ${
+            question.stage <= 4 ? 'bg-yellow-pop' : 'bg-mint'
+          }`}>
+            {question.stage_label}
+          </span>
           <button
             onClick={() => setShowFurigana((v) => !v)}
             className={`inline-flex items-center gap-2 font-mono text-[0.62rem] uppercase tracking-wider px-2.5 py-1 rounded-full border-2 border-ink font-bold hover:bg-pink-soft transition-colors ${
@@ -266,7 +260,6 @@ export default function PracticeSentenceSessionPage() {
           </button>
         </div>
 
-        {/* Floating Card */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`${question.subject_id}-${question.phrase_id}`}
@@ -284,13 +277,10 @@ export default function PracticeSentenceSessionPage() {
                   <span className="opacity-60"> #{question.source_id}</span>
                 )}
               </span>
-
-              {/* During asking phase: just show "LEVEL X" — no target word */}
               <span className="absolute top-3 right-4 font-mono text-[0.62rem] uppercase tracking-wider opacity-85">
                 LEVEL {question.level}
               </span>
 
-              {/* Tokenized sentence rendering */}
               <div className="my-3 sm:my-5">
                 <TokenizedSentence
                   tokens={question.tokens || []}
@@ -298,25 +288,18 @@ export default function PracticeSentenceSessionPage() {
                   showFurigana={showFurigana}
                   hoveredIndex={hoveredToken}
                   onHover={setHoveredToken}
-                  isFeedback={isFeedback}
                   targetSubjectId={question.subject_id}
                 />
               </div>
             </div>
 
-            {/* Footer — different content per phase */}
             <div className="bg-ink text-cream px-5 py-3 flex justify-between items-center font-mono text-[0.65rem] uppercase tracking-wider gap-2 flex-wrap">
               <span>{question.length} chars</span>
-              {isFeedback ? (
-                <span>Target: <span className="text-mint">{question.characters}</span> · "{question.target_meaning}"</span>
-              ) : (
-                <span className="opacity-65">hover words for hints · target hidden</span>
-              )}
+              <span className="opacity-65">click any word for info</span>
             </div>
           </motion.div>
         </AnimatePresence>
 
-        {/* Hover popover anchored below the card */}
         <AnimatePresence>
           {hoveredToken !== null && question.tokens && question.tokens[hoveredToken] && (
             <motion.div
@@ -327,13 +310,12 @@ export default function PracticeSentenceSessionPage() {
             >
               <TokenInfo
                 token={question.tokens[hoveredToken]}
-                hideTargetInfo={!isFeedback && question.tokens[hoveredToken].subject_id === question.subject_id}
+                hideTargetMeaning={phase === 'asking' && question.tokens[hoveredToken].subject_id === question.subject_id}
               />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Feedback / Input area */}
         <AnimatePresence mode="wait">
           {phase === 'feedback' && feedback ? (
             <motion.div
@@ -360,12 +342,7 @@ export default function PracticeSentenceSessionPage() {
                 <div className="font-body font-bold text-lg mt-2">
                   "{feedback.expected.primary}"
                 </div>
-                {feedback.srs_change && (
-                  <div className="mt-3 inline-flex items-center gap-2 bg-black/15 px-3 py-1 rounded-full font-mono text-[0.7rem] uppercase tracking-wider font-bold">
-                    {feedback.srs_change.direction === 'promoted' ? '↑' : '↓'}{' '}
-                    {feedback.srs_change.previous} → {feedback.srs_change.current}
-                  </div>
-                )}
+                {feedback.srs_change && <SrsChangeBadge change={feedback.srs_change} />}
               </div>
 
               {showBreakdown && feedback.vocab_breakdown && feedback.vocab_breakdown.length > 0 && (
@@ -458,7 +435,7 @@ export default function PracticeSentenceSessionPage() {
                   </button>
                 </div>
                 <div className="mt-3 font-mono text-[0.7rem] opacity-55 text-center">
-                  <Kbd>Enter</Kbd> submit · <Kbd>F</Kbd> furigana · <Kbd>Esc</Kbd> exit · click any word for info
+                  <Kbd>Enter</Kbd> submit · <Kbd>F</Kbd> furigana · <Kbd>Esc</Kbd> exit
                 </div>
                 {error && (
                   <div className="mt-3 bg-pink-soft border-2 border-pink-hot rounded-md p-2 font-mono text-[0.78rem]">
@@ -471,7 +448,6 @@ export default function PracticeSentenceSessionPage() {
         </AnimatePresence>
       </main>
 
-      {/* Exit dialog */}
       <AnimatePresence>
         {exitDialogOpen && (
           <motion.div
@@ -500,12 +476,12 @@ export default function PracticeSentenceSessionPage() {
                   <div className="font-display text-[0.85rem]">Keep going →</div>
                 </button>
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={handleReturnToSetup}
                   className="w-full text-left px-4 py-3 bg-white border-[2.5px] border-ink rounded-lg shadow-hard-sm hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform"
                 >
-                  <div className="font-display text-[0.85rem]">Return to dashboard</div>
+                  <div className="font-display text-[0.85rem]">Return to setup</div>
                   <div className="font-mono text-[0.7rem] opacity-65 mt-0.5">
-                    Save progress · come back later
+                    Save progress · pick different filters
                   </div>
                 </button>
                 <button
@@ -515,7 +491,7 @@ export default function PracticeSentenceSessionPage() {
                 >
                   <div className="font-display text-[0.85rem]">End session</div>
                   <div className="font-mono text-[0.7rem] opacity-75 mt-0.5">
-                    Done for now · don't come back
+                    Done for now · go to dashboard
                   </div>
                 </button>
               </div>
@@ -527,17 +503,44 @@ export default function PracticeSentenceSessionPage() {
   )
 }
 
-// Renders the sentence as individual hoverable tokens.
-// Each token shows surface + (optionally) furigana above it.
-// The target word is NOT highlighted during asking — it looks identical to others.
-// Hovering any token sets `hoveredIndex` so the parent can render a popover.
+// Renders the SRS change badge for the feedback banner. Three modes:
+//   - gated:    "⏳ SRS GATED · next review in 4h"
+//   - promoted: "↑ APPRENTICE 2 → APPRENTICE 3 · next in 8h"
+//   - demoted:  "↓ APPRENTICE 3 → APPRENTICE 2 · next in 4h"
+function SrsChangeBadge({ change }: { change: NonNullable<AnswerResponse['srs_change']> }) {
+  const c = change as {
+    gated?: boolean
+    previous: string
+    current: string
+    direction: 'promoted' | 'demoted' | null
+    next_review_in?: string | null
+  }
+
+  if (c.gated) {
+    return (
+      <div className="mt-3 inline-flex items-center gap-2 bg-black/15 px-3 py-1 rounded-full font-mono text-[0.7rem] uppercase tracking-wider font-bold">
+        ⏳ SRS GATED · {c.current}{c.next_review_in ? ` · next in ${c.next_review_in}` : ''}
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-3 inline-flex items-center gap-2 bg-black/15 px-3 py-1 rounded-full font-mono text-[0.7rem] uppercase tracking-wider font-bold">
+      {c.direction === 'promoted' ? '↑' : '↓'} {c.previous} → {c.current}
+      {c.next_review_in && <span className="opacity-75">· next in {c.next_review_in}</span>}
+    </div>
+  )
+}
+
+// Renders the sentence as hoverable tokens.
+// All tokens (kanji, kana, particles) are now hoverable — even ones without WK matches.
+// Target word gets the yellow highlight visible during asking too.
 function TokenizedSentence({
   tokens,
   fallback,
   showFurigana,
   hoveredIndex,
   onHover,
-  isFeedback,
   targetSubjectId,
 }: {
   tokens: SentenceToken[]
@@ -545,10 +548,8 @@ function TokenizedSentence({
   showFurigana: boolean
   hoveredIndex: number | null
   onHover: (i: number | null) => void
-  isFeedback: boolean
   targetSubjectId: number
 }) {
-  // Defensive: if tokens are missing/empty, just render the raw text.
   if (!tokens || tokens.length === 0) {
     return (
       <span className="font-body font-bold leading-[1.6] text-[clamp(1.3rem,3vw,1.9rem)]">
@@ -563,24 +564,23 @@ function TokenizedSentence({
         const showRuby = showFurigana && t.is_kanji && t.reading_hira
         const isHovered = hoveredIndex === i
         const isTarget = t.subject_id === targetSubjectId
-        const hasInfo = !!t.subject_id
 
-        // During asking phase, the target token visually matches others.
-        // After feedback, target gets a yellow underline.
-        const targetClass = isFeedback && isTarget
-          ? 'token-target'
-          : ''
-
-        const hoverClass = hasInfo ? 'token-clickable' : ''
-        const hoveredClass = isHovered ? 'token-hovered' : ''
+        // Target gets the persistent yellow highlight — re-added per user request.
+        // ALL tokens are hoverable; non-target hovered tokens get a softer pop.
+        const className = [
+          'token',
+          'token-clickable',
+          isHovered ? 'token-hovered' : '',
+          isTarget ? 'token-target' : ''
+        ].filter(Boolean).join(' ')
 
         return (
           <span
             key={i}
-            className={`token ${hoverClass} ${hoveredClass} ${targetClass}`}
-            onMouseEnter={() => hasInfo && onHover(i)}
+            className={className}
+            onMouseEnter={() => onHover(i)}
             onMouseLeave={() => onHover(null)}
-            onClick={() => hasInfo && onHover(isHovered ? null : i)}
+            onClick={() => onHover(isHovered ? null : i)}
           >
             {showRuby ? (
               <ruby>
@@ -599,14 +599,11 @@ function TokenizedSentence({
           position: relative;
           padding: 0 1px;
           border-radius: 3px;
+          cursor: pointer;
           transition: background 0.12s, color 0.12s;
         }
-        .token-clickable {
-          cursor: pointer;
-        }
-        .token-clickable:hover,
         .token-hovered {
-          background: rgba(255, 214, 10, 0.4);
+          background: rgba(255, 255, 255, 0.45);
           color: #1a0b2e;
         }
         .token-target {
@@ -614,6 +611,10 @@ function TokenizedSentence({
           color: #1a0b2e;
           padding: 0 4px;
           border-radius: 4px;
+        }
+        .token-target.token-hovered {
+          background: #ffd60a;
+          box-shadow: 0 0 0 2px rgba(26, 11, 46, 0.5);
         }
         ruby {
           ruby-position: over;
@@ -630,60 +631,85 @@ function TokenizedSentence({
   )
 }
 
-// Tooltip-style info card shown when a token is hovered/clicked.
-// If the user is in the asking phase AND this is the target word, we hide the meaning
-// (otherwise hovering the target would give away the answer).
+// Hover popover. Three cases:
+//   - Target during asking: hide the meaning (don't spoil the answer), show "answer first"
+//   - Token matches a WK subject: show full WK info
+//   - No WK match (particles, katakana loanwords, grammar): show surface + reading + part of speech
 function TokenInfo({
   token,
-  hideTargetInfo,
+  hideTargetMeaning,
 }: {
   token: SentenceToken
-  hideTargetInfo: boolean
+  hideTargetMeaning: boolean
 }) {
-  if (hideTargetInfo) {
-    return (
-      <div className="text-center font-mono text-[0.78rem] opacity-65">
-        ⓘ This is the word you need to translate — answer first to see its info
-      </div>
-    )
-  }
-
-  if (!token.subject_info) {
-    // Token isn't a known WK item — just show the basic morphology
+  // Asking + target = hide meaning, show position only
+  if (hideTargetMeaning) {
     return (
       <div className="text-center">
-        <div className="font-body font-black text-2xl mb-1">{token.surface}</div>
-        {token.reading_hira && (
-          <div className="font-body text-base opacity-65 mb-2">{token.reading_hira}</div>
-        )}
-        <div className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50">
-          {token.pos === '助詞' ? 'particle' :
-           token.pos === '助動詞' ? 'auxiliary' :
-           token.pos || 'unknown'}
-          {token.dictionary_form !== token.surface && ` · base: ${token.dictionary_form}`}
+        <div className="font-body font-black text-2xl mb-1 text-pink-hot">{token.surface}</div>
+        <div className="font-mono text-[0.7rem] opacity-65 italic">
+          ⓘ This is the word you need to translate
+        </div>
+        <div className="font-mono text-[0.65rem] opacity-50 mt-1">
+          (answer first to see its meaning)
         </div>
       </div>
     )
   }
 
-  const info = token.subject_info
-  return (
-    <div className="flex items-start gap-4">
-      <div className="font-body font-black text-3xl">{info.characters}</div>
-      <div className="flex-1">
-        <div className="font-mono text-[0.6rem] uppercase tracking-wider opacity-55 mb-1">
-          {info.type} · LEVEL {info.level}
-          {!info.unlocked && <span className="ml-2 text-pink-hot">· not unlocked yet</span>}
+  // WK-known word: show full info
+  if (token.subject_info) {
+    const info = token.subject_info
+    return (
+      <div className="flex items-start gap-4">
+        <div className="font-body font-black text-3xl">{info.characters}</div>
+        <div className="flex-1">
+          <div className="font-mono text-[0.6rem] uppercase tracking-wider opacity-55 mb-1">
+            {info.type} · LEVEL {info.level}
+            {!info.unlocked && <span className="ml-2 text-pink-hot">· not unlocked yet</span>}
+          </div>
+          {info.reading && (
+            <div className="font-body text-base opacity-75">{info.reading}</div>
+          )}
+          {info.meaning && (
+            <div className="font-body font-bold text-base mt-0.5">{info.meaning}</div>
+          )}
         </div>
-        {info.reading && (
-          <div className="font-body text-base opacity-75">{info.reading}</div>
-        )}
-        {info.meaning && (
-          <div className="font-body font-bold text-base mt-0.5">{info.meaning}</div>
-        )}
+      </div>
+    )
+  }
+
+  // Other tokens: katakana, particles, grammar — show what we know
+  return (
+    <div className="text-center">
+      <div className="font-body font-black text-2xl mb-1">{token.surface}</div>
+      {token.reading_hira && token.reading_hira !== token.surface && (
+        <div className="font-body text-base opacity-65 mb-1.5">{token.reading_hira}</div>
+      )}
+      <div className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50">
+        {posLabel(token.pos)}
+        {token.dictionary_form !== token.surface && ` · base: ${token.dictionary_form}`}
       </div>
     </div>
   )
+}
+
+function posLabel(pos: string | null): string {
+  if (!pos) return 'unknown'
+  const map: Record<string, string> = {
+    '名詞': 'noun',
+    '動詞': 'verb',
+    '形容詞': 'adjective',
+    '副詞': 'adverb',
+    '助詞': 'particle',
+    '助動詞': 'auxiliary',
+    '接続詞': 'conjunction',
+    '感動詞': 'interjection',
+    '連体詞': 'adnominal',
+    '記号': 'symbol',
+    'フィラー': 'filler',
+  }
+  return map[pos] || pos
 }
 
 function Kbd({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,9 @@
 module Api
   module V1
     class AuthController < ApplicationController
+      # `me` requires authentication
+      before_action :authenticate_user!, only: [:me]
+
       def signup
         user = User.new(signup_params)
         if user.save
@@ -25,6 +28,10 @@ module Api
         token = request.headers["Authorization"]&.sub(/^Bearer /, "")
         Session.find_by(token: token)&.destroy if token.present?
         head :no_content
+      end
+
+      def me
+        render json: { user: user_payload(current_user) }
       end
 
       def username_available
@@ -61,8 +68,19 @@ module Api
         {
           id:       user.id,
           email:    user.email,
-          username: user.username
+          username: user.username,
+          admin:    user.admin
         }
+      end
+
+      def authenticate_user!
+        token = request.headers["Authorization"]&.sub(/^Bearer /, "")
+        @current_user = Session.find_by(token: token)&.user if token.present?
+        head :unauthorized unless @current_user
+      end
+
+      def current_user
+        @current_user
       end
     end
   end

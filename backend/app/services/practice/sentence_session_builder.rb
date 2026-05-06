@@ -1,30 +1,30 @@
 module Practice
-  # Builds a sentence practice session by:
-  #   1. Resolving the user's "scope" into a candidate subject pool
-  #   2. Filtering by stage (apprentice / guru+ / all)
-  #   3. Mixing new (untouched) vs. review (in local SRS) items
-  #   4. For each subject, picking an appropriate phrase based on its current stage
-  #   5. Annotating each phrase with token data (surface + reading + WK subject info)
+  # Builds a sentence practice session.
   #
-  # Returns: array of question hashes ready to feed the practice flow.
+  # Key behaviors:
+  #   - Full WK-style SRS gating: items in local SRS only appear if they're DUE
+  #     (next_review_at is null or in the past). Gated (early) items are excluded.
+  #   - Admin-ordered phrases: each subject can have phrases manually ordered via
+  #     phrase_subjects.position. We pick phrases in that order. NULL positions
+  #     come last and are picked randomly.
+  #   - Stage-appropriate length: stricter brackets — Apprentice gets the shortest,
+  #     Guru+ gets fuller sentences.
   class SentenceSessionBuilder
     attr_reader :user, :scope, :stage_filter, :mix_mode, :count
 
     APPRENTICE_STAGES = (1..4).to_a.freeze
     GURU_PLUS_STAGES  = (5..9).to_a.freeze
 
-    # Length brackets in characters — stricter than before per user feedback.
-    # Apprentice gets the absolute simplest content available.
     STAGE_LENGTH_BRACKETS = {
-      1 => [0, 8],   # Apprentice 1: tiny phrases
-      2 => [0, 12],  # Apprentice 2: very short
-      3 => [0, 18],  # Apprentice 3: short
-      4 => [0, 25],  # Apprentice 4: short-medium
-      5 => [10, 35], # Guru 1: medium
-      6 => [12, 45], # Guru 2: medium
-      7 => [15, 60], # Master: medium-long
-      8 => [20, 80], # Enlightened: long
-      9 => [20, 80]  # Burned: long
+      1 => [0, 8],
+      2 => [0, 12],
+      3 => [0, 18],
+      4 => [0, 25],
+      5 => [10, 35],
+      6 => [12, 45],
+      7 => [15, 60],
+      8 => [20, 80],
+      9 => [20, 80]
     }.freeze
 
     def initialize(user:, scope:, stage_filter:, mix_mode:, count:)
@@ -46,7 +46,15 @@ module Practice
       ).index_by(&:subject_id)
 
       new_subjects    = candidate_subjects.reject { |s| existing_srs[s.id] }
-      review_subjects = candidate_subjects.select { |s| existing_srs[s.id] }
+
+      # CRITICAL CHANGE: Filter review subjects by gate.
+      # Items that haven't reached their next_review_at are excluded entirely.
+      review_subjects = candidate_subjects.select do |s|
+        srs = existing_srs[s.id]
+        srs && srs.due?
+      end
+
+      # Apply stage filter to the (now gated-aware) review pool
       review_subjects = filter_by_stage(review_subjects, existing_srs)
 
       picked_subjects = pick_subjects(new_subjects, review_subjects)
@@ -118,7 +126,6 @@ module Practice
         phrase = pick_phrase_for(subject, stage)
         next nil unless phrase
 
-        # Annotate the phrase with token data so the frontend can render hover-able chunks
         tokens = tokenizer.annotate(phrase.japanese, user: user)
 
         {
@@ -143,35 +150,40 @@ module Practice
       end
     end
 
-    # Pick a phrase whose length fits the stage's allowed bracket.
-    # Prefers exact bracket match, then any phrase, then nil.
-    #
-    # At Guru+ we prefer WK context_sentences (higher quality, item-specific).
-    # At Apprentice we prefer the shortest available phrases regardless of source.
+    # Phrase selection rules (per design):
+    #   1. Within the appropriate length bracket for the stage:
+    #      a. Use admin-ordered phrases first (lowest position first)
+    #      b. Fall back to random unordered phrases
+    #   2. If nothing in bracket: use admin order across all lengths
+    #   3. Worst case: shortest available phrase
     def pick_phrase_for(subject, stage)
       min_len, max_len = STAGE_LENGTH_BRACKETS[stage] || [0, 200]
 
-      candidates = subject.phrases.to_a
+      # Get all phrases linked to this subject, ordered by admin position
+      ordered_phrases = subject.phrase_subjects.ordered.includes(:phrase).map(&:phrase)
 
-      if stage >= 5
-        # Guru+: prefer WK
-        wk_in_bracket = candidates.select { |p| p.source == "wanikani" && fits?(p, min_len, max_len) }
-        return wk_in_bracket.sample if wk_in_bracket.any?
-
-        wk_any = candidates.select { |p| p.source == "wanikani" }
-        return wk_any.sample if wk_any.any?
+      in_bracket_ordered = ordered_phrases.select do |p|
+        p.length.between?(min_len, max_len)
       end
 
-      # All stages: try matching length bracket first
-      in_bracket = candidates.select { |p| fits?(p, min_len, max_len) }
-      return in_bracket.sample if in_bracket.any?
+      if in_bracket_ordered.any?
+        # Prefer the lowest-positioned phrase in the bracket. If multiple have the
+        # same position (or all are NULL), shuffle just those at the same level.
+        first_with_position = subject.phrase_subjects.ordered.includes(:phrase)
+                                    .find { |ps| ps.phrase.length.between?(min_len, max_len) && ps.position.present? }
+        return first_with_position.phrase if first_with_position
 
-      # Fall back to shortest available — beats nothing
-      candidates.min_by(&:length)
-    end
+        # All in bracket are unordered — random pick is fine
+        return in_bracket_ordered.sample
+      end
 
-    def fits?(phrase, min_len, max_len)
-      phrase.length >= min_len && phrase.length <= max_len
+      # No phrase in bracket — fall back to any phrase, prefer admin-ordered first
+      first_ordered = subject.phrase_subjects.ordered.includes(:phrase)
+                            .find { |ps| ps.position.present? }
+      return first_ordered.phrase if first_ordered
+
+      # Worst case: shortest unordered phrase
+      ordered_phrases.min_by(&:length)
     end
 
     def stage_label(stage)

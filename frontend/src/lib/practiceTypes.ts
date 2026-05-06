@@ -1,5 +1,3 @@
-// Existing types stay; sentence-related types updated for tokens.
-
 export interface PracticeSettings {
   default_question_count: number
   default_level_min: number
@@ -33,9 +31,6 @@ export interface PracticeQuestion {
   total: number
 }
 
-// Each token in a sentence — produced server-side by MeCab.
-// reading_hira is in hiragana (already converted from MeCab's katakana output).
-// subject_info is populated when the token matches a WK kanji/vocab subject.
 export interface SentenceToken {
   surface: string
   dictionary_form: string
@@ -106,10 +101,14 @@ export interface VocabBreakdownEntry {
   is_target: boolean
 }
 
+// SRS change is now richer — includes gated state and time-until-next-review
 export interface SrsChange {
+  gated: boolean
   previous: string
   current: string
-  direction: 'promoted' | 'demoted'
+  direction: 'promoted' | 'demoted' | null
+  next_review_at?: string | null
+  next_review_in?: string | null
 }
 
 export interface AnswerResponse {

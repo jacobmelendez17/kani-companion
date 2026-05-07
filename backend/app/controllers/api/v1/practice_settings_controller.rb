@@ -14,14 +14,25 @@ module Api
         end
       end
 
+      # POST /api/v1/practice_setting/reset
+      # Wipes all settings back to defaults.
+      def reset
+        current_user.practice_settings.destroy_all
+        render json: settings_payload(create_default)
+      end
+
       private
 
       def setting_params
         params.permit(
+          # Item practice
           :default_question_count, :default_level_min, :default_level_max,
-          :default_item_type, :default_practice_mode, :show_furigana,
-          :autoplay_audio, :keyboard_shortcuts, :theme, :daily_practice_goal,
-          :review_order
+          :default_item_type, :default_practice_mode, :review_order,
+          # Sentence practice
+          :sentence_default_scope, :sentence_default_stage_filter, :sentence_default_mix,
+          :breakdown_panel_mode, :furigana_default_visible,
+          # Preferences
+          :show_furigana, :autoplay_audio, :keyboard_shortcuts, :theme, :daily_practice_goal
         )
       end
 

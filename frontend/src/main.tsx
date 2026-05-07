@@ -7,6 +7,7 @@ import SignupPage from './pages/SignupPage'
 import ConnectWanikaniPage from './pages/ConnectWanikaniPage'
 import OnboardingPage from './pages/OnboardingPage'
 import DashboardPage from './pages/DashboardPage'
+import SettingsPage from './pages/SettingsPage'
 import PracticeSetupPage from './pages/practice/PracticeSetupPage'
 import PracticeSessionPage from './pages/practice/PracticeSessionPage'
 import PracticeSummaryPage from './pages/practice/PracticeSummaryPage'
@@ -29,15 +30,20 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/welcome" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
 
+        {/* Settings */}
+        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+
+        {/* Item practice */}
         <Route path="/practice/setup" element={<ProtectedRoute><PracticeSetupPage /></ProtectedRoute>} />
         <Route path="/practice/session/:id" element={<ProtectedRoute><PracticeSessionPage /></ProtectedRoute>} />
         <Route path="/practice/session/:id/summary" element={<ProtectedRoute><PracticeSummaryPage /></ProtectedRoute>} />
 
+        {/* Sentence practice */}
         <Route path="/practice/sentence/setup" element={<ProtectedRoute><PracticeSentenceSetupPage /></ProtectedRoute>} />
         <Route path="/practice/sentence/session/:id" element={<ProtectedRoute><PracticeSentenceSessionPage /></ProtectedRoute>} />
         <Route path="/practice/sentence/session/:id/summary" element={<ProtectedRoute><PracticeSentenceSummaryPage /></ProtectedRoute>} />
 
-        {/* Admin (gated client-side; backend also enforces) */}
+        {/* Admin */}
         <Route path="/admin/phrases" element={<ProtectedRoute><AdminPhrasesPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>

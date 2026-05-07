@@ -11,10 +11,11 @@ import RecommendedCard from '../components/dashboard/RecommendedCard'
 import WeakItemsCard from '../components/dashboard/WeakItemsCard'
 import RecentMistakesCard from '../components/dashboard/RecentMistakesCard'
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton'
+import UserMenu from '../components/UserMenu'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
+  const { user, fetchUser } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +34,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboard()
-  }, [fetchDashboard])
+    // Make sure user has the admin flag loaded for the dropdown
+    fetchUser()
+  }, [fetchDashboard, fetchUser])
 
   // Auto-refresh while syncing — poll every 5s
   useEffect(() => {
@@ -41,11 +44,6 @@ export default function DashboardPage() {
     const interval = setInterval(fetchDashboard, 5000)
     return () => clearInterval(interval)
   }, [data?.sync_status, fetchDashboard])
-
-  async function handleLogout() {
-    await logout()
-    navigate('/login', { replace: true })
-  }
 
   const srsBars = data
     ? (() => {
@@ -76,26 +74,10 @@ export default function DashboardPage() {
           <span className="font-display text-base">KaniCompanion</span>
         </Link>
 
-        <div className="flex items-center gap-4">
-          {data?.sync_status === 'completed' && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 bg-mint border-2 border-ink rounded-full px-2.5 py-1 font-mono text-[0.7rem] font-bold uppercase shadow-hard-sm">
-              <span className="w-1.5 h-1.5 bg-[#00b76a] rounded-full" />
-              Synced
-            </span>
-          )}
-          <span className="hidden sm:block font-mono text-[0.78rem] opacity-70">
-            {user?.username}
-          </span>
-          <button
-            onClick={handleLogout}
-            className="font-mono text-[0.78rem] uppercase tracking-wider text-ink/60 hover:text-pink-hot transition-colors"
-          >
-            Log out
-          </button>
-        </div>
+        <UserMenu showSyncedBadge syncStatus={data?.sync_status as 'completed' | 'pending' | 'syncing' | 'failed' | null} />
       </header>
 
-      <main className="relative z-10 max-w-[1400px] mx-auto px-5 sm:px-8 py-8">
+      <main className="relative z-00 max-w-[1400px] mx-auto px-5 sm:px-8 py-8">
         {/* Greeting + dual CTA buttons */}
         <div className="flex justify-between items-end flex-wrap gap-4 mb-8">
           <div>

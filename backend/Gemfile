@@ -8,11 +8,6 @@ gem "pg", "~> 1.5"
 gem "puma", ">= 5.0"
 gem "bootsnap", require: false
 
-# Built-in solid trifecta (Rails 8) — Postgres-backed
-gem "solid_cache"
-gem "solid_queue"
-gem "solid_cable"
-
 # Auth — Rails 8 has a generator, but we need bcrypt
 gem "bcrypt", "~> 3.1.7"
 
@@ -45,3 +40,5 @@ gem "kamal", require: false
 
 # Japanese tokenization for sentence practice
 gem "mecab", "~> 0.996"
+
+gem "dockerfile-rails", ">= 1.7", :group => :development

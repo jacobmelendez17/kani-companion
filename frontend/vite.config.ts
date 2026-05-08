@@ -18,10 +18,23 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'motion-vendor': ['motion'],
-        },
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'react'
+            }
+
+            if (id.includes('kuroshiro') || id.includes('kuromoji') || id.includes('wanakana')) {
+              return 'japanese'
+            }
+
+            if (id.includes('motion')) {
+              return 'motion'
+            }
+
+            return 'vendor'
+          }
+        }
       },
     },
   },

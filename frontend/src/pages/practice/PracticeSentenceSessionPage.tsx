@@ -23,7 +23,7 @@ export default function PracticeSentenceSessionPage() {
   const location = useLocation()
   const state = (location.state as LocationState) || {}
 
-  const [session, setSession] = useState<PracticeSession | null>(state.session || null)
+  const [, setSession] = useState<PracticeSession | null>(state.session || null)
   const [question, setQuestion] = useState<SentenceQuestion | null>(state.firstQuestion || null)
   const [userAnswer, setUserAnswer] = useState('')
   const [phase, setPhase] = useState<Phase>('asking')

@@ -48,7 +48,7 @@ type TabId = 'account' | 'wanikani' | 'item' | 'sentence' | 'preferences'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { user, fetchUser } = useAuth()
+  const { fetchUser } = useAuth()
 
   const [tab, setTab] = useState<TabId>('account')
   const [account, setAccount] = useState<Account | null>(null)

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link} from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import api from '../lib/api'
 import { DashboardData } from '../lib/dashboardTypes'
@@ -14,7 +14,7 @@ import DashboardSkeleton from '../components/dashboard/DashboardSkeleton'
 import UserMenu from '../components/UserMenu'
 
 export default function DashboardPage() {
-  const navigate = useNavigate()
+  //const navigate = useNavigate()
   const { user, fetchUser } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)

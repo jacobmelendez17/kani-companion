@@ -103,7 +103,7 @@ module Tatoeba
     private
 
     def check_mecab_available!
-      require "MeCab"
+      require "mecab"
     rescue LoadError
       raise "MeCab is not installed. On macOS: `brew install mecab mecab-ipadic`, then `bundle add mecab`. " \
             "On Linux: `apt-get install mecab libmecab-dev mecab-ipadic-utf8`."

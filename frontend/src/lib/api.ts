@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || ''
+const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 const client: AxiosInstance = axios.create({
   baseURL: `${baseURL}/api/v1`,

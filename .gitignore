@@ -41,3 +41,8 @@ fly.toml.bak
 # Rails encryption keys — NEVER commit these
 backend/config/master.key
 backend/config/credentials/*.key
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

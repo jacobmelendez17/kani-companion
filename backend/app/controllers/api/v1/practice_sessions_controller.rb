@@ -89,7 +89,7 @@ module Api
         mode       = params[:practice_mode].presence || "kanji_to_meaning"
         order      = params[:review_order].presence || "random"
 
-        sync_to_wanikani = ActiveModel::Type::Boolean.new.cast(params[:sync_to_wanikani])
+        sync_to_wanikani = ActiveModel::Type::Boolean.new.cast(params[:sync_to_wanikani]) == true
 
         if sync_to_wanikani
           if mode != "mixed"
@@ -137,6 +137,8 @@ module Api
           level_range:       [level_min, level_max],
           item_types:        item_types,
           total_questions:   subjects.size,
+          status:            "in_progress",
+          started_at:        Time.current,
           sync_to_wanikani:  sync_to_wanikani
         )
 
@@ -241,6 +243,9 @@ module Api
           level_range:     levels.any? ? [levels.min, levels.max] : [1, 60],
           item_types:      %w[kanji vocabulary],
           total_questions: questions.size,
+          status:          "in_progress",
+          started_at:      Time.current,
+          sync_to_wanikani: false,
           questions_data:  questions
         )
 

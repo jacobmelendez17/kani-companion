@@ -32,7 +32,7 @@ module Api
           :sentence_default_scope, :sentence_default_stage_filter, :sentence_default_mix,
           :breakdown_panel_mode, :furigana_default_visible,
           # Preferences
-          :show_furigana, :autoplay_audio, :keyboard_shortcuts, :theme, :daily_practice_goal
+          :show_furigana, :autoplay_audio, :keyboard_shortcuts, :theme, :daily_practice_goal, :japanese_font
         )
       end
 

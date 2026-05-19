@@ -37,6 +37,12 @@ class PracticeSetting < ApplicationRecord
     mix:         "mix"
   }, prefix: true
 
+  enum :japanese_font, {
+    zen_maru_gothic: "zen_maru_gothic",
+    noto_sans_jp:    "noto_sans_jp",
+    klee_one:        "klee_one"
+  }, prefix: true
+
   def self.create_defaults_for(user)
     create!(
       user: user,
@@ -58,7 +64,8 @@ class PracticeSetting < ApplicationRecord
       autoplay_audio:      false,
       keyboard_shortcuts:  true,
       theme:               "light",
-      daily_practice_goal: 50
+      daily_practice_goal: 50,
+      japanese_font: "zen_maru_gothic"
     )
   end
 end

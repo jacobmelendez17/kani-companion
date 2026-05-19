@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_06_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_19_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -112,7 +112,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_06_000001) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "sync_to_wanikani", default: false, null: false
+    t.string "wanikani_submission_status", default: "not_attempted", null: false
+    t.text "wanikani_submission_error"
+    t.jsonb "questions_data", default: [], null: false
     t.index ["started_at"], name: "index_practice_sessions_on_started_at"
+    t.index ["sync_to_wanikani"], name: "index_practice_sessions_on_sync_to_wanikani"
     t.index ["user_id", "status"], name: "index_practice_sessions_on_user_id_and_status"
     t.index ["user_id"], name: "index_practice_sessions_on_user_id"
   end
@@ -137,6 +142,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_06_000001) do
     t.string "sentence_default_scope", default: "current_level"
     t.string "sentence_default_stage_filter", default: "all"
     t.string "sentence_default_mix", default: "mix"
+    t.string "japanese_font", default: "zen_maru_gothic", null: false
     t.index ["user_id"], name: "index_practice_settings_on_user_id", unique: true
   end
 

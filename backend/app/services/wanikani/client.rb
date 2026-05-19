@@ -8,6 +8,7 @@ module Wanikani
     class InvalidTokenError < Error; end
     class RateLimitedError < Error; end
     class ServiceUnavailableError < Error; end
+    class UnprocessableError < Error; end
 
     def initialize(api_token:)
       @api_token = api_token
@@ -37,6 +38,17 @@ module Wanikani
       paginate("#{API_PREFIX}/study_materials", params)
     end
 
+    def submit_review(assignment_id:, incorrect_meaning_answers:, incorrect_reading_answers:, created_at: Time.current)
+      post("#{API_PREFIX}/reviews", {
+        review: {
+          assignment_id: assignment_id,
+          incorrect_meaning_answers: incorrect_meaning_answers,
+          incorrect_reading_answers: incorrect_reading_answers,
+          created_at: created_at.iso8601
+        }
+      })
+    end
+
     private
 
     def connection
@@ -57,6 +69,11 @@ module Wanikani
 
     def get(path, params = {})
       response = connection.get(path, params)
+      handle_response(response)
+    end
+
+    def post(path, body = {})
+      response = connection.post(path, body)
       handle_response(response)
     end
 
@@ -86,6 +103,9 @@ module Wanikani
         response.body
       when 401
         raise InvalidTokenError, "WaniKani API token is invalid or revoked"
+      when 422
+        body_preview = response.body.is_a?(String) ? response.body[0..200] : response.body.inspect
+        raise UnprocessableError, "WaniKani rejected review submission: #{body_preview}"
       when 429
         raise RateLimitedError, "Rate limited by WaniKani API"
       when 500..599

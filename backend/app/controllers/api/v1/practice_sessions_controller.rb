@@ -17,7 +17,7 @@ module Api
 
       def show
         session = current_user.practice_sessions.find(params[:id])
-        questions = Rails.cache.read(session_questions_key(session.id)) || []
+        questions = session_questions(session)
         answered  = session.practice_answers.count
         next_q    = questions[answered]
 
@@ -32,7 +32,7 @@ module Api
         session = current_user.practice_sessions.find(params[:id])
         return render json: { error: "Session already completed" }, status: :unprocessable_entity if session.status_completed?
 
-        questions = Rails.cache.read(session_questions_key(session.id)) || []
+        questions = session_questions(session)
         index     = session.practice_answers.count
         question  = questions[index]
         return render json: { error: "No more questions" }, status: :unprocessable_entity unless question
@@ -52,7 +52,9 @@ module Api
         wrong   = answers.where(correct: false).map { |a| answer_summary_payload(a, session) }
         correct = answers.where(correct: true).count
 
-        Rails.cache.delete(session_questions_key(session.id))
+        if session.sync_to_wanikani?
+          WanikaniReviewSubmissionJob.perform_later(session.id)
+        end
 
         summary = {
           total:            answers.count,
@@ -72,14 +74,13 @@ module Api
         unless session.status_completed?
           session.update!(status: "abandoned", completed_at: Time.current)
         end
-        Rails.cache.delete(session_questions_key(session.id))
         head :no_content
       end
 
       private
 
       # =========================
-      # ITEM SESSION (unchanged)
+      # ITEM SESSION
       # =========================
       def create_item_session
         item_types = parse_array(params[:item_types]).presence || %w[kanji vocabulary]
@@ -87,6 +88,19 @@ module Api
         count      = (params[:count] || 20).to_i.clamp(1, 500)
         mode       = params[:practice_mode].presence || "kanji_to_meaning"
         order      = params[:review_order].presence || "random"
+
+        sync_to_wanikani = ActiveModel::Type::Boolean.new.cast(params[:sync_to_wanikani])
+
+        if sync_to_wanikani
+          if mode != "mixed"
+            return render json: {
+              error: "WaniKani sync requires Mixed mode (both meaning AND reading per item)."
+            }, status: :unprocessable_entity
+          end
+
+          # WK reviews are meaningful for kanji/vocabulary. Skip radicals for synced sessions.
+          item_types &= %w[kanji vocabulary]
+        end
 
         level_min, level_max = levels.any? ? [levels.min, levels.max] : [1, 60]
 
@@ -98,24 +112,46 @@ module Api
         subjects = ::Practice::SessionBuilder.new(**builder_args).call
         subjects = subjects.select { |s| levels.include?(s.level) } if levels.any?
 
+        if sync_to_wanikani
+          candidate_subject_ids = current_user.assignments
+            .where("available_at <= ?", Time.current)
+            .where(srs_stage: 1..8)
+            .pluck(:subject_id)
+
+          if candidate_subject_ids.empty?
+            return render json: {
+              error: "No items are currently due for WaniKani review. Try again later."
+            }, status: :unprocessable_entity
+          end
+
+          subjects = subjects.select { |s| candidate_subject_ids.include?(s.id) }
+        end
+
         if subjects.empty?
           return render json: { error: "No items match.", kind: "empty_selection" }, status: :unprocessable_entity
         end
 
         session = current_user.practice_sessions.create!(
-          session_type:    "item", practice_mode: mode,
-          level_range:     [level_min, level_max], item_types: item_types,
-          total_questions: subjects.size
+          session_type:      "item",
+          practice_mode:     mode,
+          level_range:       [level_min, level_max],
+          item_types:        item_types,
+          total_questions:   subjects.size,
+          sync_to_wanikani:  sync_to_wanikani
         )
 
         questions = build_item_questions(subjects, mode)
-        Rails.cache.write(session_questions_key(session.id), questions, expires_in: 4.hours)
+
+        session.update!(
+          total_questions: questions.size,
+          questions_data: questions
+        )
+
         Rails.cache.write(session_setup_key(session.id), {
           item_types: item_types, levels: levels, count: count,
-          practice_mode: mode, review_order: order, session_type: "item"
+          practice_mode: mode, review_order: order, session_type: "item",
+          sync_to_wanikani: sync_to_wanikani
         }, expires_in: 24.hours)
-
-        session.update!(total_questions: questions.size)
 
         render json: {
           session:        session_payload(session),
@@ -204,10 +240,10 @@ module Api
           session_type:    "sentence", practice_mode: "ja_to_en",
           level_range:     levels.any? ? [levels.min, levels.max] : [1, 60],
           item_types:      %w[kanji vocabulary],
-          total_questions: questions.size
+          total_questions: questions.size,
+          questions_data:  questions
         )
 
-        Rails.cache.write(session_questions_key(session.id), questions, expires_in: 4.hours)
         Rails.cache.write(session_setup_key(session.id), {
           session_type: "sentence", scope_type: scope_type, levels: levels,
           subject_ids: subject_ids, stage_filter: stage_filter, mix_mode: mix_mode, count: count
@@ -228,7 +264,7 @@ module Api
         targets        = [english_target].compact
 
         correct = ::Practice::SentenceAnswerNormalizer.match?(user_answer, targets: targets)
-        srs_change = update_local_srs(subject, correct)
+        srs_change = session.sync_to_wanikani? ? nil : update_local_srs(subject, correct)
 
         record_and_respond(session, subject, "sentence_translate", user_answer, correct,
                            expected: { primary: english_target, accepted: targets },
@@ -403,7 +439,7 @@ module Api
       # SHARED
       # =========================
       def record_and_respond(session, subject, question_type, user_answer, correct, expected:, subject_payload:, extra: {})
-        questions = Rails.cache.read(session_questions_key(session.id)) || []
+        questions = session_questions(session)
         index     = session.practice_answers.count
 
         PracticeAnswer.create!(
@@ -438,8 +474,8 @@ module Api
         end
       end
 
-      def session_questions_key(session_id)
-        "practice_session:#{current_user.id}:#{session_id}:questions"
+      def session_questions(session)
+        session.questions_data.is_a?(Array) ? session.questions_data : []
       end
 
       def session_setup_key(session_id)
@@ -448,8 +484,11 @@ module Api
 
       def stored_setup_params(session)
         Rails.cache.read(session_setup_key(session.id)) || {
-          session_type: session.session_type, item_types: session.item_types,
-          levels: session.level_range, practice_mode: session.practice_mode
+          session_type: session.session_type,
+          item_types: session.item_types,
+          levels: session.level_range,
+          practice_mode: session.practice_mode,
+          sync_to_wanikani: session.sync_to_wanikani
         }
       end
 
@@ -459,7 +498,10 @@ module Api
           practice_mode: session.practice_mode, total_questions: session.total_questions,
           correct_count: session.correct_count, incorrect_count: session.incorrect_count,
           status: session.status, started_at: session.started_at,
-          completed_at: session.completed_at, accuracy: session.accuracy
+          completed_at: session.completed_at, accuracy: session.accuracy,
+          sync_to_wanikani: session.sync_to_wanikani,
+          wanikani_submission_status: session.wanikani_submission_status,
+          wanikani_submission_error: session.wanikani_submission_error
         }
       end
 

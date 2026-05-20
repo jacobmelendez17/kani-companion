@@ -44,6 +44,7 @@ export default function PracticeSetupPage() {
   const [count, setCount] = useState(20)
   const [customCount, setCustomCount] = useState('')
   const [reviewOrder, setReviewOrder] = useState<ReviewOrder>('random')
+  const [syncToWanikani, setSyncToWanikani] = useState(false)
 
   const [dashboard, setDashboard] = useState<DashboardSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
@@ -183,6 +184,19 @@ export default function PracticeSetupPage() {
     )
   }
 
+  function handleToggleSync(next: boolean) {
+  if (next) {
+    setSyncToWanikani(true)
+    setPracticeMode('mixed')
+    setItemTypes((curr) => {
+      const filtered = curr.filter((t) => t !== 'radical')
+      return filtered.length > 0 ? filtered : ['kanji', 'vocabulary']
+    })
+  } else {
+    setSyncToWanikani(false)
+  }
+}
+
   const finalCount = customCount ? parseInt(customCount, 10) || count : count
 
   const summary = useMemo(() => {
@@ -218,6 +232,7 @@ export default function PracticeSetupPage() {
         count: finalCount,
         practice_mode: practiceMode,
         review_order: reviewOrder,
+        sync_to_wanikani: syncToWanikani,
       })
       navigate(`/practice/session/${data.session.id}`, {
         state: { firstQuestion: data.first_question, session: data.session },
@@ -390,7 +405,10 @@ export default function PracticeSetupPage() {
                 <ModeCard
                   key={mode.id}
                   selected={practiceMode === mode.id}
-                  onClick={() => setPracticeMode(mode.id)}
+                  onClick={() => {
+                    if (syncToWanikani && mode.id !== 'mixed') return
+                    setPracticeMode(mode.id)
+                  }}
                   jp={mode.jp}
                   arrow={mode.arrow}
                   en={mode.en}
@@ -456,6 +474,60 @@ export default function PracticeSetupPage() {
               ))}
             </div>
           </Section>
+          
+          <Divider />
+
+          <div className="bg-purple-night/5 border-[2.5px] border-purple-deep rounded-2xl p-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex-1 min-w-[280px]">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="font-mono text-[0.65rem] uppercase tracking-[0.15em] bg-purple-deep text-cream px-2 py-0.5 rounded font-bold">
+                    WK SYNC
+                  </span>
+                  <span className="font-display text-base">Submit to WaniKani</span>
+                </div>
+
+                <p className="text-sm opacity-80 leading-relaxed mb-1">
+                  Affects your real WaniKani SRS. Correct/incorrect answers from this session will be
+                  sent to WaniKani as actual reviews — items will advance or demote in your real SRS.
+                </p>
+
+                <ul className="text-[0.78rem] opacity-65 mt-2 ml-4 list-disc space-y-0.5">
+                  <li>Requires Mixed mode, because WK needs both meaning and reading per item</li>
+                  <li>Only items currently due in WaniKani will appear</li>
+                  <li>Radicals are excluded from synced sessions</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleToggleSync(false)}
+                  className={`px-4 py-2 border-2 border-ink rounded-lg font-mono text-[0.7rem] font-bold uppercase shadow-hard-sm hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform ${
+                    !syncToWanikani ? 'bg-mint' : 'bg-white'
+                  }`}
+                >
+                  Off · Practice only
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleToggleSync(true)}
+                  className={`px-4 py-2 border-2 border-ink rounded-lg font-mono text-[0.7rem] font-bold uppercase shadow-hard-sm hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform ${
+                    syncToWanikani ? 'bg-purple-electric text-cream' : 'bg-white'
+                  }`}
+                >
+                  On · Affect WK
+                </button>
+              </div>
+            </div>
+
+            {syncToWanikani && (
+              <div className="mt-4 bg-yellow-pop/30 border-2 border-yellow-pop rounded-lg px-3 py-2 font-mono text-[0.72rem] leading-relaxed">
+                ⚠ Mixed mode has been set automatically. Only items currently due in your WaniKani review queue will appear.
+              </div>
+            )}
+          </div>
         </div>
 
         {error && (

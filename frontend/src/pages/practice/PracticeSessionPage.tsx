@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { bind, unbind, toHiragana } from 'wanakana'
 import api from '../../lib/api'
+import { useJapaneseFont } from '../../lib/japaneseFont'
 import {
   PracticeQuestion,
   PracticeSession,
@@ -32,6 +33,7 @@ export default function PracticeSessionPage() {
   const [error, setError] = useState<string | null>(null)
   const [exitDialogOpen, setExitDialogOpen] = useState(false)
   const [exiting, setExiting] = useState(false)
+  const jaFont = useJapaneseFont()
 
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -298,7 +300,7 @@ export default function PracticeSessionPage() {
             </span>
 
             <div
-              className="font-body font-black text-[clamp(5rem,15vw,9rem)] leading-[0.9] mt-3 mb-3"
+              className={`font-black text-[clamp(5rem,15vw,9rem)] leading-[0.9] mt-3 mb-3 ${jaFont}`}
               style={{
                 textShadow:
                   question.subject_type === 'kanji' || question.subject_type === 'vocabulary'

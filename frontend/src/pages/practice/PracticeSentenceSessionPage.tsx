@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import api from '../../lib/api'
+import { useJapaneseFont } from '../../lib/japaneseFont'
 import {
   AnswerResponse,
   PracticeSession,
@@ -32,6 +33,7 @@ export default function PracticeSentenceSessionPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [exitDialogOpen, setExitDialogOpen] = useState(false)
+  const jaFont = useJapaneseFont()
 
   const [showFurigana, setShowFurigana] = useState(true)
   const [hoveredToken, setHoveredToken] = useState<number | null>(null)
@@ -289,6 +291,7 @@ export default function PracticeSentenceSessionPage() {
                   hoveredIndex={hoveredToken}
                   onHover={setHoveredToken}
                   targetSubjectId={question.subject_id}
+                  jaFont={jaFont}
                 />
               </div>
             </div>
@@ -311,6 +314,7 @@ export default function PracticeSentenceSessionPage() {
               <TokenInfo
                 token={question.tokens[hoveredToken]}
                 hideTargetMeaning={phase === 'asking' && question.tokens[hoveredToken].subject_id === question.subject_id}
+                jaFont={jaFont}
               />
             </motion.div>
           )}
@@ -358,12 +362,12 @@ export default function PracticeSentenceSessionPage() {
                           item.is_target ? 'bg-yellow-pop' : 'bg-cream'
                         }`}
                       >
-                        <div className="font-body font-black text-base">
+                        <div className={`font-black text-base ${jaFont}`}>
                           {item.characters}
                           {item.is_target && <span className="text-pink-hot ml-1">★</span>}
                         </div>
                         {item.reading && (
-                          <div className="font-body text-[0.7rem] opacity-65">{item.reading}</div>
+                          <div className={`text-[0.7rem] opacity-65 ${jaFont}`}>{item.reading}</div>
                         )}
                         {item.meaning && (
                           <div className="font-mono text-[0.6rem] opacity-65 uppercase truncate">
@@ -542,6 +546,7 @@ function TokenizedSentence({
   hoveredIndex,
   onHover,
   targetSubjectId,
+  jaFont,
 }: {
   tokens: SentenceToken[]
   fallback: string
@@ -549,17 +554,18 @@ function TokenizedSentence({
   hoveredIndex: number | null
   onHover: (i: number | null) => void
   targetSubjectId: number
+  jaFont: string
 }) {
   if (!tokens || tokens.length === 0) {
     return (
-      <span className="font-body font-bold leading-[1.6] text-[clamp(1.3rem,3vw,1.9rem)]">
+      <span className={`font-bold leading-[1.6] text-[clamp(1.3rem,3vw,1.9rem)] ${jaFont}`}>
         {fallback}
       </span>
     )
   }
 
   return (
-    <span className="inline-block font-body font-bold leading-[1.7] text-[clamp(1.3rem,3vw,1.9rem)]">
+    <span className={`inline-block font-bold leading-[1.7] text-[clamp(1.3rem,3vw,1.9rem)] ${jaFont}`}>
       {tokens.map((t, i) => {
         const showRuby = showFurigana && t.is_kanji && t.reading_hira
         const isHovered = hoveredIndex === i
@@ -638,15 +644,17 @@ function TokenizedSentence({
 function TokenInfo({
   token,
   hideTargetMeaning,
+  jaFont,
 }: {
   token: SentenceToken
   hideTargetMeaning: boolean
+  jaFont: string
 }) {
   // Asking + target = hide meaning, show position only
   if (hideTargetMeaning) {
     return (
       <div className="text-center">
-        <div className="font-body font-black text-2xl mb-1 text-pink-hot">{token.surface}</div>
+        <div className={`font-black text-2xl mb-1 text-pink-hot ${jaFont}`}>{token.surface}</div>
         <div className="font-mono text-[0.7rem] opacity-65 italic">
           ⓘ This is the word you need to translate
         </div>
@@ -662,14 +670,14 @@ function TokenInfo({
     const info = token.subject_info
     return (
       <div className="flex items-start gap-4">
-        <div className="font-body font-black text-3xl">{info.characters}</div>
+        <div className={`font-black text-3xl ${jaFont}`}>{info.characters}</div>
         <div className="flex-1">
           <div className="font-mono text-[0.6rem] uppercase tracking-wider opacity-55 mb-1">
             {info.type} · LEVEL {info.level}
             {!info.unlocked && <span className="ml-2 text-pink-hot">· not unlocked yet</span>}
           </div>
           {info.reading && (
-            <div className="font-body text-base opacity-75">{info.reading}</div>
+            <div className={`text-base opacity-75 ${jaFont}`}>{info.reading}</div>
           )}
           {info.meaning && (
             <div className="font-body font-bold text-base mt-0.5">{info.meaning}</div>
@@ -682,9 +690,9 @@ function TokenInfo({
   // Other tokens: katakana, particles, grammar — show what we know
   return (
     <div className="text-center">
-      <div className="font-body font-black text-2xl mb-1">{token.surface}</div>
+      <div className={`font-black text-2xl mb-1 ${jaFont}`}>{token.surface}</div>
       {token.reading_hira && token.reading_hira !== token.surface && (
-        <div className="font-body text-base opacity-65 mb-1.5">{token.reading_hira}</div>
+        <div className={`text-base opacity-65 mb-1.5 ${jaFont}`}>{token.reading_hira}</div>
       )}
       <div className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50">
         {posLabel(token.pos)}

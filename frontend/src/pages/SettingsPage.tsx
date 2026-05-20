@@ -26,6 +26,7 @@ interface Settings {
   sentence_default_mix: 'new_only' | 'review_only' | 'mix'
   breakdown_panel_mode: 'always' | 'never' | 'on_incorrect'
   furigana_default_visible: boolean
+  japanese_font: 'zen_maru_gothic' | 'noto_sans_jp' | 'klee_one'
   // Preferences
   show_furigana: boolean
   autoplay_audio: boolean
@@ -889,13 +890,76 @@ function SentencePracticeTab({ settings, onChange }: { settings: Settings; onCha
       <Section title="// VOCAB BREAKDOWN PANEL" desc="When to show the post-answer vocab list">
         <PillRow
           options={[
-            { value: 'always',      label: 'Always' },
+            { value: 'always',       label: 'Always' },
             { value: 'on_incorrect', label: 'On wrong only' },
             { value: 'never',        label: 'Never' },
           ]}
           selected={settings.breakdown_panel_mode}
           onChange={(v) => onChange({ ...settings, breakdown_panel_mode: v as Settings['breakdown_panel_mode'] })}
         />
+      </Section>
+
+      <Divider />
+
+      <Section
+        title="// JAPANESE FONT"
+        desc="Pick a font for kanji/kana during practice. Try different styles to get comfortable reading natural variations."
+      >
+        <div className="flex flex-col gap-2.5">
+          {[
+            {
+              value: 'zen_maru_gothic',
+              label: 'Zen Maru Gothic',
+              description: 'Rounded and friendly. KaniCompanion default.',
+              className: 'ja-font-zen_maru_gothic',
+            },
+            {
+              value: 'noto_sans_jp',
+              label: 'Noto Sans JP',
+              description: 'Clean and neutral. Looks like most Japanese websites.',
+              className: 'ja-font-noto_sans_jp',
+            },
+            {
+              value: 'klee_one',
+              label: 'Klee One',
+              description: 'Handwritten style. Great for reading natural handwriting.',
+              className: 'ja-font-klee_one',
+            },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() =>
+                onChange({
+                  ...settings,
+                  japanese_font: option.value as Settings['japanese_font'],
+                })
+              }
+              className={`text-left px-4 py-3 border-[2.5px] border-ink rounded-xl transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 ${
+                settings.japanese_font === option.value
+                  ? 'bg-pink-soft shadow-hard-sm'
+                  : 'bg-white hover:shadow-hard-sm'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4 mb-1">
+                <span className="font-display text-sm">{option.label}</span>
+                {settings.japanese_font === option.value && (
+                  <span className="font-mono text-[0.6rem] uppercase bg-pink-hot text-cream rounded px-1.5 py-0.5">
+                    Selected
+                  </span>
+                )}
+              </div>
+
+              <div className="font-mono text-[0.7rem] opacity-65 mb-2">
+                {option.description}
+              </div>
+
+              <div className={`text-3xl ${option.className}`}>
+                木 漢字 ひらがな カタカナ
+              </div>
+            </button>
+          ))}
+        </div>
       </Section>
     </div>
   )

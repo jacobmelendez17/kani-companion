@@ -1,6 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik+Mono+One&family=Zen+Maru+Gothic:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700;900&family=Klee+One:wght@400;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  .ja-font-zen_maru_gothic {
+    font-family: 'Zen Maru Gothic', system-ui, sans-serif;
+  }
+
+  .ja-font-noto_sans_jp {
+    font-family: 'Noto Sans JP', system-ui, sans-serif;
+  }
+
+  .ja-font-klee_one {
+    font-family: 'Klee One', 'Zen Maru Gothic', cursive;
+  }
+}
 
 @layer base {
   html {
@@ -19,13 +35,11 @@
     inset: 0;
     pointer-events: none;
     z-index: 100;
-    background-image: repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.03) 0,
-      rgba(0, 0, 0, 0.03) 1px,
-      transparent 1px,
-      transparent 3px
-    );
+    background-image: repeating-linear-gradient(0deg,
+        rgba(0, 0, 0, 0.03) 0,
+        rgba(0, 0, 0, 0.03) 1px,
+        transparent 1px,
+        transparent 3px);
     mix-blend-mode: multiply;
   }
 

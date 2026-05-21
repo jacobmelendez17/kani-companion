@@ -37,9 +37,13 @@ export default function PracticeSessionPage() {
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Initialize: fetch session if not in nav state
+  // Always verify session state from the server on mount.
+  // We cannot rely on location.state.firstQuestion for correctness: if the user
+  // uses browser back/forward, the stale navigation state stays in memory while
+  // practice_answers.count has advanced, causing the frontend to display question 0
+  // while the backend grades against question N (the actual current one).
   useEffect(() => {
-    if (question || !id) return
+    if (!id) return
 
     api
       .get(`/practice_sessions/${id}`)

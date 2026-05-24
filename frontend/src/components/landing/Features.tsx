@@ -30,14 +30,13 @@ export default function Features() {
           variants={cardAnimation}
         >
           <div className="w-14 h-14 rounded-[14px] grid place-items-center font-body font-black text-[1.8rem] mb-5 border-[2.5px] border-ink bg-pink-hot text-white">
-            SRS
+            運
           </div>
           <h3 className="font-display text-2xl leading-tight mb-3 tracking-[-0.02em]">
-            Your own private SRS
+            SRS your way
           </h3>
           <p className="text-[0.95rem] leading-[1.55] opacity-85 mb-5">
-            Practice as much as you want. KaniCompanion tracks your performance with its{' '}
-            <em>own</em> SRS — your real WaniKani reviews stay untouched.
+            Learn new sentences based on unlocked vocabulary with additional SRS tradcking for new sentences. Practice WaniKani reviews in different styles that directly contribtue to your account.
           </p>
           <div className="flex gap-2 flex-wrap mt-4">
             {[
@@ -72,7 +71,7 @@ export default function Features() {
             Every direction.
           </h3>
           <p className="text-[0.95rem] leading-[1.55] opacity-85 mb-5">
-            Pick your mode. Drill the way that matches your weak spots — or mix it up.
+            Choose different ways to practice or do a mix of everything.
           </p>
           <div className="flex flex-col gap-2.5 mt-5">
             {[
@@ -136,7 +135,7 @@ export default function Features() {
             Your token, locked tight.
           </h3>
           <p className="text-[0.95rem] leading-[1.55] opacity-85 mb-5">
-            WaniKani API tokens are encrypted at rest, never logged, and never sent to the browser. Revoke any time from settings.
+            WaniKani API tokens are encrypted, never logged, and never sent to the browser.
           </p>
           <div className="bg-white/5 border-2 border-dashed border-mint rounded-[10px] p-3.5 mt-5 font-mono text-[0.85rem] flex items-center gap-3">
             <div className="w-8 h-8 bg-mint text-ink rounded-lg grid place-items-center text-base flex-shrink-0">

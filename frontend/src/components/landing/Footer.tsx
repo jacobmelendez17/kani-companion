@@ -14,7 +14,7 @@ export default function Footer() {
 
         {[
           { title: 'PRODUCT', links: ['Features', 'How it works', 'Pricing', 'Changelog'] },
-          { title: 'RESOURCES', links: ['Docs', 'Support', 'API status', 'FAQ'] },
+          { title: 'RESOURCES', links: ['Docs', 'Support', 'FAQ'] },
           { title: 'LEGAL', links: ['Privacy', 'Terms', 'Security', 'Contact'] },
         ].map((col) => (
           <div key={col.title}>

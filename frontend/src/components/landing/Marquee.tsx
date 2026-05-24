@@ -1,4 +1,4 @@
-const items = ['RADICALS', 'KANJI', 'VOCABULARY', 'SENTENCES', 'READINGS', 'MEANINGS']
+const items = ['RADICALS', '部首', 'KANJI', '漢字', 'VOCABULARY', '語彙', 'SENTENCES', '文章']
 
 export default function Marquee() {
   // Duplicate for seamless loop

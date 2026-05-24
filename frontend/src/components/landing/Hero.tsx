@@ -39,7 +39,7 @@ export default function Hero() {
           variants={fadeUp}
         >
           <span className="w-2 h-2 bg-[#00b76a] rounded-full animate-pulse-dot" />
-          SUPPLEMENTARY · NOT A REPLACEMENT
+          いらっしゃいませ！
         </motion.div>
 
         <motion.h1
@@ -59,17 +59,15 @@ export default function Hero() {
             ガンガン
           </span>
           <br />
-          beyond the crab.
+          beyond the krab.
         </motion.h1>
 
         <motion.p
           className="text-lg leading-relaxed text-ink/85 max-w-[520px] mb-9"
           variants={fadeUp}
         >
-          A companion app that syncs with your{' '}
-          <strong className="bg-pink-soft px-1.5 py-px rounded font-bold">WaniKani</strong>{' '}
-          account so you can drill radicals, kanji, vocab — and full sentences — without
-          ever touching your official SRS reviews.
+          Hello! This companion app for WaniKani syncs your API token so you can practice any unlocked radicals, kanji, or vocabulary whenever you want! 
+          There are additional featuers including sentence translation practice based on levels and much more!
         </motion.p>
 
         <motion.div className="flex gap-4 flex-wrap mb-9" variants={fadeUp}>

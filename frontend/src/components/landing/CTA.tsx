@@ -24,10 +24,10 @@ export default function CTA() {
 
         <div className="relative">
           <h2 className="font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-none tracking-[-0.02em] text-cream mb-4">
-            Ready to drill?
+            Ready to start?
           </h2>
           <p className="text-cream/95 text-lg mb-8">
-            Free while in beta. Bring your own WaniKani token.
+            Create an account or login to being practicing.
           </p>
           <a
             href="/signup"

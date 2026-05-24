@@ -9,7 +9,7 @@ const steps = [
   },
   {
     num: '03',
-    title: 'Pick your battle',
+    title: 'Pick your practice',
     desc: 'Levels, item type, mode, count. Or hit "recommended" and let us pick your weakest items.',
   },
   {
@@ -36,12 +36,12 @@ export default function HowItWorks() {
       />
 
       <div className="max-w-[1400px] mx-auto relative z-10">
-        <div className="mb-15 max-w-[700px]">
+        <div className="mb-15 max-w-[800px]">
           <span className="inline-block font-mono text-[0.78rem] uppercase tracking-[0.15em] text-mint font-bold mb-3.5 px-2.5 py-1 bg-purple-night border-2 border-mint rounded-md">
             // the loop
           </span>
           <h2 className="font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-none tracking-[-0.02em] text-cream mt-3">
-            Four steps. Zero friction.
+            Get started in four easy steps.
           </h2>
         </div>
 

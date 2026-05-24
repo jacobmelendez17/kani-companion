@@ -1,4 +1,36 @@
+import { Link } from 'react-router-dom'
 import Logo from './Logo'
+
+type FooterLink = { label: string; href: string; external?: boolean }
+
+const columns: { title: string; links: FooterLink[] }[] = [
+  {
+    title: 'PRODUCT',
+    links: [
+      { label: 'Features', href: '#features' },
+      { label: 'How it works', href: '/#how' },
+      { label: 'Pricing', href: '#' },
+      { label: 'Changelog', href: '/changelog' },
+    ],
+  },
+  {
+    title: 'RESOURCES',
+    links: [
+      { label: 'Docs', href: '#' },
+      { label: 'Support', href: '#' },
+      { label: 'FAQ', href: '/#faq' },
+    ],
+  },
+  {
+    title: 'LEGAL',
+    links: [
+      { label: 'Privacy', href: '#' },
+      { label: 'Terms', href: '#' },
+      { label: 'Security', href: '#' },
+      { label: 'Contact', href: '#' },
+    ],
+  },
+]
 
 export default function Footer() {
   return (
@@ -12,24 +44,29 @@ export default function Footer() {
           </p>
         </div>
 
-        {[
-          { title: 'PRODUCT', links: ['Features', 'How it works', 'Pricing', 'Changelog'] },
-          { title: 'RESOURCES', links: ['Docs', 'Support', 'FAQ'] },
-          { title: 'LEGAL', links: ['Privacy', 'Terms', 'Security', 'Contact'] },
-        ].map((col) => (
+        {columns.map((col) => (
           <div key={col.title}>
             <h5 className="font-display text-[0.85rem] mb-4 text-pink-soft tracking-[0.02em]">
               {col.title}
             </h5>
             <ul className="list-none flex flex-col gap-2.5">
               {col.links.map((link) => (
-                <li key={link}>
-                  <a
-                    href="#"
-                    className="text-cream no-underline text-[0.9rem] opacity-70 transition-all hover:opacity-100 hover:text-pink-hot"
-                  >
-                    {link}
-                  </a>
+                <li key={link.label}>
+                  {link.href.startsWith('/') && !link.href.startsWith('/#') ? (
+                    <Link
+                      to={link.href}
+                      className="text-cream no-underline text-[0.9rem] opacity-70 transition-all hover:opacity-100 hover:text-pink-hot"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={link.href}
+                      className="text-cream no-underline text-[0.9rem] opacity-70 transition-all hover:opacity-100 hover:text-pink-hot"
+                    >
+                      {link.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

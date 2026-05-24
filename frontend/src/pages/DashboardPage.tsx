@@ -12,6 +12,7 @@ import WeakItemsCard from '../components/dashboard/WeakItemsCard'
 import RecentMistakesCard from '../components/dashboard/RecentMistakesCard'
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton'
 import UserMenu from '../components/UserMenu'
+import Footer from '../components/landing/Footer'
 
 export default function DashboardPage() {
   //const navigate = useNavigate()
@@ -103,7 +104,7 @@ export default function DashboardPage() {
               className="px-5 py-2.5 bg-ink text-cream border-[2.5px] border-ink rounded-[10px] font-display text-[0.85rem] no-underline transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5"
               style={{ boxShadow: '4px 4px 0 #ff3d8a' }}
             >
-              Drill items →
+              Practice items →
             </Link>
             <Link
               to="/practice/sentence/setup"
@@ -177,6 +178,7 @@ export default function DashboardPage() {
           </div>
         ) : null}
       </main>
+      <Footer />
     </div>
   )
 }

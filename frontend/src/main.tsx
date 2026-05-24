@@ -15,6 +15,7 @@ import PracticeSentenceSetupPage from './pages/practice/PracticeSentenceSetupPag
 import PracticeSentenceSessionPage from './pages/practice/PracticeSentenceSessionPage'
 import PracticeSentenceSummaryPage from './pages/practice/PracticeSentenceSummaryPage'
 import AdminPhrasesPage from './pages/admin/AdminPhrasesPage'
+import ChangelogPage from './pages/ChangelogPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import './index.css'
 
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/changelog" element={<ChangelogPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
 

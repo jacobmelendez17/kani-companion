@@ -69,7 +69,8 @@ module Api
           id:       user.id,
           email:    user.email,
           username: user.username,
-          admin:    user.admin
+          admin:    user.admin,
+          demo:     user.demo
         }
       end
 

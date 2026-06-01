@@ -74,8 +74,8 @@ export default function Hero() {
           <a href="/signup" className="btn btn-large">
             Connect WaniKani →
           </a>
-          <a href="#how" className="btn btn-large btn-purple">
-            See how it works
+          <a href="/demo" className="btn btn-large btn-purple">
+            Try Demo →
           </a>
         </motion.div>
 

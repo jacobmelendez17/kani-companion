@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
+import { useAuth } from '../../lib/auth'
 import {
   EligibleSubject,
   MixMode,
@@ -34,6 +35,9 @@ export default function PracticeSentenceSetupPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const incomingParams = (location.state as LocationState | null)?.setupParams
+  const { user } = useAuth()
+  const isDemo = user?.demo ?? false
+  const DEMO_LEVELS = [1, 2, 3]
 
   // Scope: how the user chooses what items to practice
   const [scopeType, setScopeType] = useState<SentenceScopeType>('level')
@@ -88,7 +92,9 @@ export default function PracticeSentenceSetupPage() {
           if (incomingParams.count) setCount(incomingParams.count)
         } else {
           // Apply defaults from settings
-          if (settings.sentence_default_scope === 'all_eligible') {
+          if (isDemo) {
+            setSelectedLevels(DEMO_LEVELS)
+          } else if (settings.sentence_default_scope === 'all_eligible') {
             setScopeType('all_eligible')
           } else if (dash.wanikani_level) {
             setSelectedLevels([dash.wanikani_level])
@@ -120,8 +126,8 @@ export default function PracticeSentenceSetupPage() {
       .finally(() => setPickerLoading(false))
   }, [scopeType, pickerLevel])
 
-  const userLevel = dashboard?.wanikani_level || null
-  const maxAvailableLevel = userLevel || 60
+  const userLevel = isDemo ? 3 : (dashboard?.wanikani_level || null)
+  const maxAvailableLevel = isDemo ? 3 : (userLevel || 60)
 
   function toggleLevel(level: number) {
     if (level > maxAvailableLevel) return

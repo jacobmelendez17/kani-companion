@@ -1,31 +1,19 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../lib/api'
 import Logo from '../components/landing/Logo'
 
-type Entry = {
+type ChangeType = 'added' | 'fixed' | 'changed' | 'removed'
+
+interface ChangelogEntry {
+  id: number
   version: string
-  date: string
-  changes: { type: 'added' | 'fixed' | 'changed' | 'removed'; text: string }[]
+  release_date: string
+  changes: { type: ChangeType; text: string }[]
+  position: number
 }
 
-const changelog: Entry[] = [
-  {
-    version: '0.1.0-beta',
-    date: '2026-05-23',
-    changes: [
-      { type: 'added', text: 'Initial beta launch.' },
-      { type: 'added', text: 'WaniKani API v2 sync: subjects, assignments, and review statistics.' },
-      { type: 'added', text: 'Item practice sessions: meaning, reading, and mixed modes.' },
-      { type: 'added', text: 'Sentence practice sessions for Guru+ vocabulary.' },
-      { type: 'added', text: 'Local SRS progression tracking per sentence.' },
-      { type: 'added', text: 'Optional sync of correct answers back to WaniKani.' },
-      { type: 'added', text: 'Dashboard with level card, streak, SRS distribution, and recommended items.' },
-      { type: 'fixed', text: 'Resolved double API call on dashboard load.' },
-      { type: 'fixed', text: 'Fixed token refresh bug causing premature logout.' },
-    ],
-  },
-]
-
-const typeBadge: Record<Entry['changes'][number]['type'], { label: string; cls: string }> = {
+const typeBadge: Record<ChangeType, { label: string; cls: string }> = {
   added:   { label: 'Added',   cls: 'bg-mint text-ink' },
   fixed:   { label: 'Fixed',   cls: 'bg-pink-hot text-cream' },
   changed: { label: 'Changed', cls: 'bg-yellow-pop text-ink' },
@@ -33,6 +21,17 @@ const typeBadge: Record<Entry['changes'][number]['type'], { label: string; cls: 
 }
 
 export default function ChangelogPage() {
+  const [entries, setEntries] = useState<ChangelogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    api.get<{ entries: ChangelogEntry[] }>('/changelog_entries')
+      .then(({ data }) => setEntries(data.entries))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
+  }, [])
+
   return (
     <div className="min-h-screen bg-cream">
       <header className="px-5 sm:px-8 py-4 flex justify-between items-center border-b-[3px] border-ink bg-cream">
@@ -60,23 +59,37 @@ export default function ChangelogPage() {
           </p>
         </div>
 
+        {loading && (
+          <div className="font-mono text-sm opacity-60">Loading…</div>
+        )}
+
+        {error && (
+          <div className="font-mono text-sm text-pink-hot">Could not load changelog. Try refreshing.</div>
+        )}
+
+        {!loading && !error && entries.length === 0 && (
+          <div className="font-mono text-sm opacity-60">No entries yet.</div>
+        )}
+
         <div className="flex flex-col gap-10">
-          {changelog.map((entry) => (
-            <div key={entry.version} className="border-[3px] border-ink rounded-[18px] overflow-hidden shadow-hard-md">
+          {entries.map((entry, i) => (
+            <div key={entry.id} className="border-[3px] border-ink rounded-[18px] overflow-hidden shadow-hard-md">
               <div className="px-6 py-4 bg-ink text-cream flex justify-between items-center flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <span className="font-display text-xl">v{entry.version}</span>
-                  <span className="px-2.5 py-0.5 bg-pink-hot text-cream font-mono text-[0.7rem] rounded-md uppercase font-bold">
-                    latest
-                  </span>
+                  {i === 0 && (
+                    <span className="px-2.5 py-0.5 bg-pink-hot text-cream font-mono text-[0.7rem] rounded-md uppercase font-bold">
+                      latest
+                    </span>
+                  )}
                 </div>
-                <span className="font-mono text-[0.8rem] opacity-60">{entry.date}</span>
+                <span className="font-mono text-[0.8rem] opacity-60">{entry.release_date}</span>
               </div>
               <ul className="divide-y-2 divide-ink/10">
-                {entry.changes.map((change, i) => {
-                  const badge = typeBadge[change.type]
+                {entry.changes.map((change, j) => {
+                  const badge = typeBadge[change.type] ?? typeBadge.changed
                   return (
-                    <li key={i} className="px-6 py-4 flex items-start gap-4 bg-white">
+                    <li key={j} className="px-6 py-4 flex items-start gap-4 bg-white">
                       <span
                         className={`flex-shrink-0 px-2.5 py-0.5 border-2 border-ink rounded-md font-mono text-[0.7rem] uppercase font-bold mt-0.5 ${badge.cls}`}
                       >

@@ -38,10 +38,18 @@ Rails.application.routes.draw do
 
       get "dashboard", to: "dashboard#show"
 
+      resources :changelog_entries, only: %i[index]
+
+      namespace :demo do
+        resource  :session,  only: %i[create]
+        resources :subjects, only: %i[index]
+      end
+
       namespace :admin do
         get  "phrases/search_subjects", to: "phrases#search_subjects"
         post "phrases/reorder",         to: "phrases#reorder"
         resources :phrases, only: %i[index create update destroy]
+        resources :changelog_entries, only: %i[index create update destroy]
       end
     end
   end

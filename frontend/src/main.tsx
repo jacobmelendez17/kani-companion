@@ -14,7 +14,9 @@ import PracticeSummaryPage from './pages/practice/PracticeSummaryPage'
 import PracticeSentenceSetupPage from './pages/practice/PracticeSentenceSetupPage'
 import PracticeSentenceSessionPage from './pages/practice/PracticeSentenceSessionPage'
 import PracticeSentenceSummaryPage from './pages/practice/PracticeSentenceSummaryPage'
+import DemoDashboardPage from './pages/DemoDashboardPage'
 import AdminPhrasesPage from './pages/admin/AdminPhrasesPage'
+import AdminChangelogPage from './pages/admin/AdminChangelogPage'
 import ChangelogPage from './pages/ChangelogPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import './index.css'
@@ -25,6 +27,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/changelog" element={<ChangelogPage />} />
+        <Route path="/demo" element={<DemoDashboardPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
 
@@ -47,6 +50,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
         {/* Admin */}
         <Route path="/admin/phrases" element={<ProtectedRoute><AdminPhrasesPage /></ProtectedRoute>} />
+        <Route path="/admin/changelog" element={<ProtectedRoute><AdminChangelogPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

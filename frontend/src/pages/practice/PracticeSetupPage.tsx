@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import api from '../../lib/api'
+import { useAuth } from '../../lib/auth'
 import { PracticeMode, ItemType, ReviewOrder, SetupParams } from '../../lib/practiceTypes'
 
 interface DashboardSnapshot {
@@ -36,6 +37,9 @@ export default function PracticeSetupPage() {
   const [searchParams] = useSearchParams()
   const preset = searchParams.get('preset')
   const incomingParams = (location.state as LocationState | null)?.setupParams
+  const { user } = useAuth()
+  const isDemo = user?.demo ?? false
+  const DEMO_LEVELS = [1, 2, 3]
 
   const [itemTypes, setItemTypes] = useState<ItemType[]>(['kanji'])
   const [selectedLevels, setSelectedLevels] = useState<number[]>([])
@@ -98,7 +102,10 @@ export default function PracticeSetupPage() {
             setPracticeMode(savedMode as PracticeMode)
           }
 
-          if (dash.wanikani_level) {
+          if (isDemo) {
+            setSelectedLevels(DEMO_LEVELS)
+            setLevelMode('custom')
+          } else if (dash.wanikani_level) {
             setSelectedLevels([dash.wanikani_level])
           } else if (settings.default_level_min && settings.default_level_max) {
             const range: number[] = []
@@ -116,8 +123,8 @@ export default function PracticeSetupPage() {
       .finally(() => setLoading(false))
   }, [preset, incomingParams])
 
-  const userLevel = dashboard?.wanikani_level || null
-  const maxAvailableLevel = userLevel || 60
+  const userLevel = isDemo ? 3 : (dashboard?.wanikani_level || null)
+  const maxAvailableLevel = isDemo ? 3 : (userLevel || 60)
 
   function applyLevelMode(mode: typeof levelMode) {
     setLevelMode(mode)
@@ -475,9 +482,9 @@ export default function PracticeSetupPage() {
             </div>
           </Section>
           
-          <Divider />
+          {!isDemo && <Divider />}
 
-          <div className="bg-purple-night/5 border-[2.5px] border-purple-deep rounded-2xl p-5">
+          {!isDemo && <div className="bg-purple-night/5 border-[2.5px] border-purple-deep rounded-2xl p-5">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex-1 min-w-[280px]">
                 <div className="flex items-center gap-2 mb-1.5">
@@ -527,7 +534,7 @@ export default function PracticeSetupPage() {
                 ⚠ Mixed mode has been set automatically. Only items currently due in your WaniKani review queue will appear.
               </div>
             )}
-          </div>
+          </div>}
         </div>
 
         {error && (

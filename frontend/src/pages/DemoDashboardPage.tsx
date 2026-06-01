@@ -22,12 +22,6 @@ const typeColor: Record<SubjectType, string> = {
   vocabulary: 'bg-purple-electric text-cream',
 }
 
-const typeLabel: Record<SubjectType, string> = {
-  radical:    'R',
-  kanji:      '漢',
-  vocabulary: 'V',
-}
-
 const baseURL = import.meta.env.VITE_API_BASE_URL || ''
 
 export default function DemoDashboardPage() {

@@ -7,6 +7,9 @@ app = 'kani-companion'
 primary_region = 'lax'
 console_command = '/app/bin/rails console'
 
+[deploy]
+  release_command = "bin/rails db:migrate"
+
 [build]
 
 [env]

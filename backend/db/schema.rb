@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_19_000003) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_31_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,6 +32,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_19_000003) do
     t.index ["user_id", "subject_id"], name: "index_assignments_on_user_id_and_subject_id", unique: true
     t.index ["user_id"], name: "index_assignments_on_user_id"
     t.index ["wanikani_id"], name: "index_assignments_on_wanikani_id", unique: true
+  end
+
+  create_table "changelog_entries", force: :cascade do |t|
+    t.string "version", null: false
+    t.date "release_date", null: false
+    t.jsonb "changes", default: [], null: false
+    t.boolean "published", default: false, null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["position"], name: "index_changelog_entries_on_position"
+    t.index ["published"], name: "index_changelog_entries_on_published"
   end
 
   create_table "local_srs_states", force: :cascade do |t|
@@ -198,9 +210,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_19_000003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "admin", default: false, null: false
+    t.boolean "demo", default: false, null: false
+    t.datetime "demo_expires_at"
     t.index "lower((email)::text)", name: "index_users_on_lower_email", unique: true
     t.index "lower((username)::text)", name: "index_users_on_lower_username", unique: true
     t.index ["admin"], name: "index_users_on_admin"
+    t.index ["demo"], name: "index_users_on_demo"
+    t.index ["demo_expires_at"], name: "index_users_on_demo_expires_at"
   end
 
   create_table "wanikani_profiles", force: :cascade do |t|
